@@ -1,0 +1,17 @@
+# ignore bytecode
+*.pyc
+__pycache__
+
+
+# ignore the exampe files
+*.csv
+*.tsv
+*.xls
+*.xlsx
+
+# ignore some dirs
+bin
+lib
+include
+
+
