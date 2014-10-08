@@ -17,19 +17,24 @@ def print_line(line):
         ordered_line.append(str(line[column_name]))
     print("\t".join(ordered_line))
 
-def query_hgnc(data):
+def _query(q, key, data):
     conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
     cur = conn.cursor(pymysql.cursors.DictCursor)
     for idx, line in enumerate(data):
-        print("Getting '%s' ... " % line['HGNC_ID'])
-        cur.execute("select seq_region.name AS Chromosome, g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop, x.display_label AS HGNC_ID, g.stable_id AS Ensembl_gene_id from gene g join xref x on x.xref_id = g.display_xref_id join seq_region using (seq_region_id) where x.display_label = %s", line['HGNC_ID'])
+        print("Getting '%s' ... " % line[key])
+        cur.execute(q, line[key])
 
         for entry in cur.fetchall():
             data[idx] = merge_line(entry, line)
     return data
 
+def query_hgnc(data):
+    q = "select seq_region.name AS Chromosome, g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop, x.display_label AS HGNC_ID, g.stable_id AS Ensembl_gene_id from gene g join xref x on x.xref_id = g.display_xref_id join seq_region using (seq_region_id) where x.display_label = %s"
+    return _query(q, 'HGNC_ID', data)
+
 def query_ens(data):
-    pass
+    q = "select seq_region_start AS Gene_start, seq_region_end AS Gene_stop, g.description, stable_id AS Ensembl_gene_id, display_label AS HGNC_ID, x.description, seq_region.name AS Chromosome from gene g join xref x on x.xref_id = g.display_xref_id join seq_region using (seq_region_id) where g.stable_id = %s"
+    return _query(q, 'Ensembl_gene_id', data)
 
 def merge_line(ens, client):
     """Will merge dict ens (EnsEMBL data) with client (data). ens will take precedence over client. Changes will be reported.
@@ -41,12 +46,12 @@ def merge_line(ens, client):
     """
     for key, value in client.items():
         if key in ens:
-            if ens[key] != value:
+            if str(ens[key]) != str(value):
                 print("%s: ens '%s' diff from client '%s'" % (key, ens[key], value))
-            else:
-                print("%s: ens '%s' eq to client '%s'" % (key, ens[key], value))
-        else:
-            print("%s not in ens!" % key)
+        #    else:
+        #        print("%s: ens '%s' eq to client '%s'" % (key, ens[key], value))
+        #else:
+        #    print("%s not in ens!" % key)
 
     merged = client.copy()
     merged.update(ens)
