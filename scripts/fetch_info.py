@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
+from __future__ import print_function
 import sys
 import pymysql
 import argparse
@@ -118,12 +119,12 @@ def list2dict(header, data):
 def main(argv):
     # set up the argparser
     parser = argparse.ArgumentParser(description='Queries EnsEMBL and fills in the blanks of a gene list. Only columns headers found in gl_headers will be used')
-    parser.add_argument('infile', type=argparse.FileType('r'), help='the csv file')
+    parser.add_argument('infile', type=argparse.FileType('r'), help='the tsv file with correct headers')
     args = parser.parse_args(argv)
 
-    # read in the CSV file
-    csvfile = args.infile
-    raw_data = ( line.strip() for line in csvfile ) # sluuuurp
+    # read in the TSV file
+    tsvfile = args.infile
+    raw_data = ( line.strip() for line in tsvfile ) # sluuuurp
     parsable_data = ( line.split("\t") for line in raw_data )
 
     # clean up the input
