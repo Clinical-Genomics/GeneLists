@@ -17,19 +17,35 @@ def print_line(line):
         ordered_line.append(str(line[column_name]))
     print("\t".join(ordered_line))
 
-def query_hgnc(data):
+def query(data, keys):
     conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
     cur = conn.cursor(pymysql.cursors.DictCursor)
-    for idx, line in enumerate(data):
-        print("Getting '%s' ... " % line['HGNC_ID'])
-        cur.execute("select seq_region.name AS Chromosome, g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop, x.display_label AS HGNC_ID, g.stable_id AS Ensembl_gene_id from gene g join xref x on x.xref_id = g.display_xref_id join seq_region using (seq_region_id) where x.display_label = %s", line['HGNC_ID'])
 
-        for entry in cur.fetchall():
-            data[idx] = merge_line(entry, line)
-    return data
+    base_query = "select g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop, x.display_label AS HGNC_ID, g.stable_id AS Ensembl_gene_id, seq_region.name AS Chromosome from gene g join xref x on x.xref_id = g.display_xref_id join seq_region using (seq_region_id)"
+    keys_conds = { 'HGNC_ID': 'x.display_label', 'Ensembl_gene_id': 'g.stable_id' }
 
-def query_ens(data):
-    pass
+    annot_data = []
+    for line in data:
+        conds = [ "%s = %%s" % keys_conds[ key ] for key in keys if key in line ]
+        cond_values = [ line[ key ] for key in keys if key in line ]
+
+        query = "%s where %s" % ( base_query, " and ".join(conds) )
+        cur.execute(query, cond_values)
+
+        rs = cur.fetchall() # result set
+
+        # O-oh .. for now this still means manual intervention!
+        if len(rs) == 0:
+            print("Getting '%s' ... " % cond_values)
+            print('Not found!')
+        elif len(rs) > 1:
+            print("Getting '%s' ... " % cond_values)
+            print('Multiple entries found!')
+        else:
+            for entry in rs:
+                annot_data.append(merge_line(entry, line))
+
+    return annot_data
 
 def merge_line(ens, client):
     """Will merge dict ens (EnsEMBL data) with client (data). ens will take precedence over client. Changes will be reported.
@@ -41,12 +57,12 @@ def merge_line(ens, client):
     """
     for key, value in client.items():
         if key in ens:
-            if ens[key] != value:
+            if str(ens[key]) != str(value):
                 print("%s: ens '%s' diff from client '%s'" % (key, ens[key], value))
-            else:
-                print("%s: ens '%s' eq to client '%s'" % (key, ens[key], value))
-        else:
-            print("%s not in ens!" % key)
+        #    else:
+        #        print("%s: ens '%s' eq to client '%s'" % (key, ens[key], value))
+        #else:
+        #    print("%s not in ens!" % key)
 
     merged = client.copy()
     merged.update(ens)
@@ -85,7 +101,6 @@ def munge(data):
 def main(argv):
     # set up the argparser
     parser = argparse.ArgumentParser(description='Queries EnsEMBL and fills in the blanks of a gene list. Only columns headers found in gl_headers will be used')
-    parser.add_argument('--hgnc', dest='hgnc', default=False, action='store_true', help='Indicate that the csv-infile''s main identifiers are HGNC identifiers')
     parser.add_argument('infile', type=argparse.FileType('r'), help='the csv file')
     args = parser.parse_args(argv)
 
@@ -110,10 +125,7 @@ def main(argv):
         line = dict(zip(header, line))
         data[idx] = line
 
-    if args.hgnc:
-        data = query_hgnc(data)
-    else:
-        data = query_ens(data)
+    data = query(data, ['HGNC_ID', 'Ensembl_gene_id'])
 
     # clean up the data from EnsEMBL a bit
     data = munge(data)
