@@ -10,15 +10,46 @@ import re
 gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_ID', 'Disease_group_pathway', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Genetic_model', 'OMIM_gene', 'OMIM_morbid', 'Gene_locus', 'Genome_build', 'UniPort_ID', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Red_pen', 'Database']
 
 def print_header(header=gl_header):
+    """Prints the gl_header
+
+    Args:
+        header (list, optional): a list of strings
+    Returns:
+        pass
+    Note:
+        Prints to STDOUT
+    """
     print('#' + "\t".join(gl_header))
 
 def print_line(line):
+    """Prints a line based on the order of the gl_headers
+
+    Args:
+        line (dict): dict with values for one line of a gene list. All values of gl_headers should be present as keys
+
+    Returns:
+        pass
+
+    Note:
+        Will print the STDOUT
+    """
     ordered_line = list()
     for column_name in gl_header:
         ordered_line.append(str(line[column_name]))
     print("\t".join(ordered_line))
 
 def query(data, keys):
+    """Queries EnsEMBL. Parameters are HGNC_ID and/or Ensembl_gene_id, whatever is available. Data from EnsEMBLdb will overwrite the client data.
+    A(n) identifier(s) should yield one result from EnsEMBLdb. It will be reported if a(n) identifier(s) don't yield any or multiple results.
+    
+    Args:
+        data (list of dicts): representing the lines and columns in a gene list. The keys of the dicts must match the column names of the EnsEMBLdb query.
+        keys (list): A list of available parameters: HGNC_ID and/or Ensembl_gene_id.
+            TODO: could this now be autodetected?
+    Yields:
+        dict: a row with data from ensEMBLdb filled in.
+    
+    """
     conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
     cur = conn.cursor(pymysql.cursors.DictCursor)
 
@@ -48,9 +79,11 @@ def query(data, keys):
 def merge_line(ens, client):
     """Will merge dict ens (EnsEMBL data) with client (data). ens will take precedence over client. Changes will be reported.
 
-    :ens: dict with values for one line of a gene list
-    :client: dict with values for one line of a gene list
-    :returns: merged dict
+    Args:
+        ens (dict): dict with values for one line of a gene list
+        client (dict): with values for one line of a gene list
+    Yields:
+        dict: merged ens and client dict
 
     """
     for key, value in client.items():
@@ -67,10 +100,12 @@ def merge_line(ens, client):
     return merged
 
 def fill(data):
-    """Fill in the blanks!
+    """Fills in the blanks with '#NA'
 
-    :data: list of dicts representing the lines and columns in a gene list
-    :returns: list of dicts, with all missing headers filled in as '#NA'
+    Args:
+        data (list of dicts): representing the lines and columns in a gene list
+    Yields:
+        dict: with all missing columns filled in with #NA
 
     """
     defaults=dict((column_name, '#NA') for column_name in gl_header)
@@ -81,9 +116,12 @@ def fill(data):
 
 def munge(data):
     """Make sure the data we got from EnsEMBL is good enough for the gene lists
+        # swap start and stop gene coordinates if start if bigger than stop
 
-    :data: list of dicts representing the lines and columns in a gene list
-    :returns: list of dicts, with all missing headers filled in as '#NA'
+    Args:
+        data (list of dicts): representing the lines and columns in a gene list
+    Yields:
+        dict: a row with some munged data
 
     """
     # swap coordinates if start > stop
@@ -98,8 +136,10 @@ def cleanup(data):
         # replace ; with comma
         # remove leading and trailing white space
 
-    :data: list of lists. Inner list represents a row in a gene list
-    :returns: a list of lists. The inner list has been cleaned up.
+    Args:
+        data (list of lists): Inner list represents a row in a gene list
+    Yield:
+        list: a cleaned up row
 
     """
     for line in data:
@@ -108,9 +148,11 @@ def cleanup(data):
 def list2dict(header, data):
     """Will convert each row in the data from a list to dict using the header list as keys.
 
-    :header: A list containing the keys for the dict generation
-    :data: list of lists. Inner list represents a row in a gene list
-    :returns: TODO
+    Args:
+        header (list): A list containing the keys for the dict generation
+        data (list of lists): Inner list represents a row in a gene list
+    Yields:
+        dict: the next dictified line
 
     """
     for line in data:
