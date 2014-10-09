@@ -24,7 +24,6 @@ def query(data, keys):
     base_query = "select g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop, x.display_label AS HGNC_ID, g.stable_id AS Ensembl_gene_id, seq_region.name AS Chromosome from gene g join xref x on x.xref_id = g.display_xref_id join seq_region using (seq_region_id)"
     keys_conds = { 'HGNC_ID': 'x.display_label', 'Ensembl_gene_id': 'g.stable_id' }
 
-    annot_data = []
     for line in data:
         conds = [ "%s = %%s" % keys_conds[ key ] for key in keys if key in line ]
         cond_values = [ line[ key ] for key in keys if key in line ]
@@ -43,9 +42,7 @@ def query(data, keys):
             print('Multiple entries found!')
         else:
             for entry in rs:
-                annot_data.append(merge_line(entry, line))
-
-    return annot_data
+                yield merge_line(entry, line)
 
 def merge_line(ens, client):
     """Will merge dict ens (EnsEMBL data) with client (data). ens will take precedence over client. Changes will be reported.
@@ -76,12 +73,10 @@ def fill(data):
 
     """
     defaults=dict((column_name, '#NA') for column_name in gl_header)
-    for idx, line in enumerate(data):
+    for line in data:
         d = defaults.copy()
         d.update(line)
-        data[idx] = d
-
-    return data
+        yield d
 
 def munge(data):
     """Make sure the data we got from EnsEMBL is good enough for the gene lists
@@ -91,12 +86,34 @@ def munge(data):
 
     """
     # swap coordinates if start > stop
-    for idx, line in enumerate(data):
+    for line in data:
         if line['Gene_start'] > line['Gene_stop']:
             line['Gene_stop'], line['Gene_start'] = line['Gene_start'], line['Gene_stop']
-            data[idx] = line
+        yield line
 
-    return data
+def cleanup(data):
+    """Will clean the data according to rules set by MIP
+        # replace white space seperated comma's with just a comma
+        # replace ; with comma
+        # remove leading and trailing white space
+
+    :data: list of lists. Inner list represents a row in a gene list
+    :returns: a list of lists. The inner list has been cleaned up.
+
+    """
+    for line in data:
+        yield [ re.sub(r'\s*[,;]\s*', ',', column.strip()) for column in line ]
+
+def list2dict(header, data):
+    """Will convert each row in the data from a list to dict using the header list as keys.
+
+    :header: A list containing the keys for the dict generation
+    :data: list of lists. Inner list represents a row in a gene list
+    :returns: TODO
+
+    """
+    for line in data:
+        yield dict(zip(header, line))
 
 def main(argv):
     # set up the argparser
@@ -106,36 +123,28 @@ def main(argv):
 
     # read in the CSV file
     csvfile = args.infile
-    clean_data = ( line.strip() for line in csvfile ) # sluuuurp
-    parsable_data = ( line.split("\t") for line in clean_data )
+    raw_data = ( line.strip() for line in csvfile ) # sluuuurp
+    parsable_data = ( line.split("\t") for line in raw_data )
 
     # clean up the input
-    for idx, line in enumerate(parsable_data):
-        # replace white space seperated comma's with just a comma
-        # replace ; with comma
-        # remove leading and trailing white space
-        line = [ re.sub(r'\s*[,;]\s*', ',', column.strip()) for column in line ]
-        data[idx] = line
-
-    # get the header
-    header = data.pop(0)
+    clean_data = cleanup(parsable_data)
 
     # list to dict
-    for idx, line in enumerate(data):
-        line = dict(zip(header, line))
-        data[idx] = line
+    header = next(clean_data) # get the header
+    dict_data = list2dict(header, clean_data)
 
-    data = query(data, ['HGNC_ID', 'Ensembl_gene_id'])
+    # fill in missing blanks
+    ensembld_data = query(dict_data, ['HGNC_ID', 'Ensembl_gene_id'])
 
     # clean up the data from EnsEMBL a bit
-    data = munge(data)
+    munged_data = munge(ensembld_data)
 
     # fill in missing values with #NA
-    data = fill(data)
+    completed_data = fill(munged_data)
 
     # print the gene list
     print_header()
-    for line in data:
+    for line in completed_data:
         print_line(line)
 
 if __name__ == '__main__':
