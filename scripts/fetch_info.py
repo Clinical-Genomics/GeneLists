@@ -91,8 +91,8 @@ def main(argv):
 
     # read in the CSV file
     csvfile = args.infile
-    clean_data = ( line.strip() for line in csvfile) ) # sluuuurp
-    parable_data = ( line.split("\t") for line in clean_data )
+    clean_data = ( line.strip() for line in csvfile ) # sluuuurp
+    parsable_data = ( line.split("\t") for line in clean_data )
 
     # clean up the input
     for idx, line in enumerate(parsable_data):
