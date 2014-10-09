@@ -91,11 +91,11 @@ def main(argv):
 
     # read in the CSV file
     csvfile = args.infile
-    data = [ line.strip() for line in csvfile.readlines() ] # sluuuurp
-    data = [ line.split("\t") for line in data ]
+    clean_data = ( line.strip() for line in csvfile) ) # sluuuurp
+    parable_data = ( line.split("\t") for line in clean_data )
 
     # clean up the input
-    for idx, line in enumerate(data):
+    for idx, line in enumerate(parsable_data):
         # replace white space seperated comma's with just a comma
         # replace ; with comma
         # remove leading and trailing white space
