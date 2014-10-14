@@ -58,7 +58,7 @@ def merge_line(ens, client):
     for key, value in client.items():
         if key in ens:
             if str(ens[key]) != str(value):
-                print("%s: ens '%s' diff from client '%s'" % (key, ens[key], value))
+                print("%s > %s: ens '%s' diff from client '%s'" % (ens['Ensembl_gene_id'], key, ens[key], value))
         #    else:
         #        print("%s: ens '%s' eq to client '%s'" % (key, ens[key], value))
         #else:
