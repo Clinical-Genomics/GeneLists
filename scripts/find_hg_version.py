@@ -19,7 +19,8 @@ def main(argv):
         cur.execute("use %s;" % db)
         try:
             # TODO check with other query for releases 48 - 64
-            cur.execute("select g.stable_id, g.seq_region_start, g.seq_region_end from gene g join seq_region using (seq_region_id) where g.seq_region_start = %s and g.seq_region_end = %s AND g.stable_id = %s", (argv[0], argv[1], argv[2]))
+            #cur.execute("select g.stable_id, g.seq_region_start, g.seq_region_end from gene g join seq_region using (seq_region_id) where g.seq_region_start = %s and g.seq_region_end = %s AND g.stable_id = %s", (argv[0], argv[1], argv[2]))
+            cur.execute("select g.stable_id, g.seq_region_start, g.seq_region_end from gene g join seq_region using (seq_region_id) where g.seq_region_start = %s and g.seq_region_end = %s", (argv[0], argv[1]))
             rs = cur.fetchall()
             if len(rs) != 0:
                 print("%s is the one" % db)

@@ -9,6 +9,13 @@ import re
 
 gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_ID', 'Disease_group_pathway', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Genetic_model', 'OMIM_gene', 'OMIM_morbid', 'Gene_locus', 'Genome_build', 'UniPort_ID', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Red_pen', 'Database']
 
+# EnsEMBL connection
+# TODO make this prettier
+conn = None
+
+# switch: to print or not to print
+verbose = False 
+
 def print_header(header=gl_header):
     """Prints the gl_header
 
@@ -38,17 +45,28 @@ def print_line(line):
         ordered_line.append(str(line[column_name]))
     print("\t".join(ordered_line))
 
+def p(line):
+    """print only if the verbose switch has been set
+
+    Args:
+        line (str): line to print to STDOUT
+
+    Returns:
+        pass
+    """
+    if verbose:
+        print(line)
+
 def query(data, keys):
     """Queries EnsEMBL. Parameters are HGNC_ID and/or Ensembl_gene_id, whatever is available. Data from EnsEMBLdb will overwrite the client data.
     A(n) identifier(s) should yield one result from EnsEMBLdb. It will be reported if a(n) identifier(s) don't yield any or multiple results.
-    
+
     Args:
         data (list of dicts): representing the lines and columns in a gene list. The keys of the dicts must match the column names of the EnsEMBLdb query.
         keys (list): A list of available parameters: HGNC_ID and/or Ensembl_gene_id.
             TODO: could this now be autodetected?
     Yields:
         dict: a row with data from ensEMBLdb filled in.
-    
     """
     conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
     cur = conn.cursor(pymysql.cursors.DictCursor)
@@ -67,14 +85,49 @@ def query(data, keys):
 
         # O-oh .. for now this still means manual intervention!
         if len(rs) == 0:
-            print("Getting '%s' ... " % cond_values)
-            print('Not found!')
+            p("Getting '%s' ... " % cond_values)
+            p('Not found!')
         elif len(rs) > 1:
-            print("Getting '%s' ... " % cond_values)
-            print('Multiple entries found!')
+            p("Getting '%s' ... " % cond_values)
+            p('Multiple entries found!')
         else:
             for entry in rs:
                 yield merge_line(entry, line)
+
+def get_transcript(start, end, ensembl_gene_id=None, hgnc_id=None):
+    """Queries EnsEMBL. Parameters are HGNC_ID and/or Ensembl_gene_id, whatever is available. It will return one hit with the ensembl trasncript id.
+
+    Args:
+        ensembl_gene_id (str, optional): ensembl_gene_id and/or hgnc_id should be provided.
+        hgnc_id (str, optional): ensembl_gene_id and/or hgnc_id should be provided.
+        start (int): start coordinate of the possible transcript of this gene.
+        end (int): stop coordinate of the possible transcript of this gene.
+
+    Yields:
+        dict: with following keys: ensembl_gene_id, hgnc_id, start, end, transcript_id
+    """
+    cur = conn.cursor(pymysql.cursors.DictCursor)
+
+    base_query = "select g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop, x.display_label AS HGNC_ID, g.stable_id AS Ensembl_gene_id, seq_region.name AS Chromosome, t.seq_region_start AS Transcript_start, t.seq_region_end AS Transcript_stop, t.stable_id AS Transcript_id from gene g join xref x on x.xref_id = g.display_xref_id join seq_region using (seq_region_id) join transcript t using (gene_id)"
+
+    conds = {'t.seq_region_start': start, 't.seq_region_end': end}
+    if ensembl_gene_id != None:
+        conds.update({'g.stable_id': ensembl_gene_id})
+    if hgnc_id != None:
+        conds.update({'x.display_label': hgnc_id})
+
+    query = "%s where %s" % ( base_query, " and ".join([ '%s = %%s' % column for column in conds.keys() ]) )
+    cur.execute(query, [ str(value) for value in conds.values() ])
+
+    rs = cur.fetchall() # result set
+
+    # O-oh .. for now this still means manual intervention!
+    if len(rs) > 1:
+        p("Getting '%s' ... " % conds.values())
+        p('Multiple entries found!')
+    elif len(rs) == 0:
+        return None
+    return rs[0]
 
 def merge_line(ens, client):
     """Will merge dict ens (EnsEMBL data) with client (data). ens will take precedence over client. Changes will be reported.
@@ -86,14 +139,28 @@ def merge_line(ens, client):
         dict: merged ens and client dict
 
     """
+
     for key, value in client.items():
-        if key in ens:
+        if key in ('Gene_start', 'Gene_stop'):
+            pass
+        elif key in ens:
             if str(ens[key]) != str(value):
-                print("%s > %s: ens '%s' diff from client '%s'" % (ens['Ensembl_gene_id'], key, ens[key], value))
+                p("%s > %s: ens '%s' diff from client '%s'" % (ens['Ensembl_gene_id'], key, ens[key], value))
         #    else:
-        #        print("%s: ens '%s' eq to client '%s'" % (key, ens[key], value))
+        #        p("%s: ens '%s' eq to client '%s'" % (key, ens[key], value))
         #else:
-        #    print("%s not in ens!" % key)
+        #    p("%s not in ens!" % key)
+
+    # Check the Gene_start and Gene_stop for being Transcript coordinates
+    if str(ens['Gene_start']) != str(client['Gene_start']) or str(ens['Gene_stop']) != str(client['Gene_stop']):
+        # get the transcript, compare those coordinates and report
+        transcript = get_transcript(client['Gene_start'], client['Gene_stop'], ens['Ensembl_gene_id'], ens['HGNC_ID'])
+        for key in ('Gene_start', 'Gene_stop'):
+            if str(ens[key]) != str(client[key]):
+                if transcript and len(transcript) > 1:
+                    p("%s > %s: ens '%s' diff from client '%s', but matches Transcript %s: %s" % (ens['Ensembl_gene_id'], key, ens[key], client[key], transcript['Transcript_id'], transcript[key.replace('Gene', 'Transcript')]))
+                else:
+                    p("%s > %s: ens '%s' diff from client '%s'" % (ens['Ensembl_gene_id'], key, ens[key], client[key]))
 
     merged = client.copy()
     merged.update(ens)
@@ -158,11 +225,31 @@ def list2dict(header, data):
     for line in data:
         yield dict(zip(header, line))
 
+def zero2one(data):
+    """Fix 0-based coordinates to 1-based coordinates
+
+    Args:
+        data (list of lists): Inner list represents a row in a gene list
+    Yields:
+        dict: the fixed coordinates data dict
+    """
+    for line in data:
+        for key in ('Gene_start', 'Gene_stop'):
+            line[key] = int(line[key]) + 1
+        yield line
+
 def main(argv):
     # set up the argparser
     parser = argparse.ArgumentParser(description='Queries EnsEMBL and fills in the blanks of a gene list. Only columns headers found in gl_headers will be used')
     parser.add_argument('infile', type=argparse.FileType('r'), help='the tsv file with correct headers')
+    parser.add_argument('--zero', default=False, action='store_true', dest='zero_based', help='if set, will convert 0-based coordinates to 1-based')
+    parser.add_argument('--verbose', default=False, action='store_true', dest='verbose', help='if set, will convert 0-based coordinates to 1-based')
     args = parser.parse_args(argv)
+
+    # make sure we print if we are asked to
+    if args.verbose:
+        global verbose
+        verbose = True
 
     # read in the TSV file
     tsvfile = args.infile
@@ -176,8 +263,17 @@ def main(argv):
     header = next(clean_data) # get the header
     dict_data = list2dict(header, clean_data)
 
+    fixed_data = None
+    if args.zero_based:
+        # fix 0-based coordinates to be 1-based
+        fixed_data = zero2one(dict_data)
+    else:
+        fixed_data = dict_data
+
     # fill in missing blanks
-    ensembld_data = query(dict_data, ['HGNC_ID', 'Ensembl_gene_id'])
+    global conn
+    conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
+    ensembld_data = query(fixed_data, ['HGNC_ID', 'Ensembl_gene_id'])
 
     # clean up the data from EnsEMBL a bit
     munged_data = munge(ensembld_data)
