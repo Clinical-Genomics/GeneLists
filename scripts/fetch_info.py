@@ -87,6 +87,7 @@ def query(data, keys):
         if len(rs) == 0:
             p("Getting '%s' ... " % cond_values)
             p('Not found!')
+            yield line
         elif len(rs) > 1:
             p("Getting '%s' ... " % cond_values)
             p('Multiple entries found!')
