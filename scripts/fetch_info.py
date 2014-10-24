@@ -78,7 +78,7 @@ def query(data, keys):
         conds = [ "%s = %%s" % keys_conds[ key ] for key in keys if key in line ]
         cond_values = [ line[ key ] for key in keys if key in line ]
 
-        query = "%s where %s" % ( base_query, " and ".join(conds) )
+        query = "%s where length(seq_region.name) < 3 and %s" % ( base_query, " and ".join(conds) )
         cur.execute(query, cond_values)
 
         rs = cur.fetchall() # result set
