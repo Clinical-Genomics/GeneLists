@@ -153,15 +153,16 @@ def merge_line(ens, client):
         #    p("%s not in ens!" % key)
 
     # Check the Gene_start and Gene_stop for being Transcript coordinates
-    if str(ens['Gene_start']) != str(client['Gene_start']) or str(ens['Gene_stop']) != str(client['Gene_stop']):
-        # get the transcript, compare those coordinates and report
-        transcript = get_transcript(client['Gene_start'], client['Gene_stop'], ens['Ensembl_gene_id'], ens['HGNC_ID'])
-        for key in ('Gene_start', 'Gene_stop'):
-            if str(ens[key]) != str(client[key]):
-                if transcript and len(transcript) > 1:
-                    p("%s > %s: ens '%s' diff from client '%s', but matches Transcript %s: %s" % (ens['Ensembl_gene_id'], key, ens[key], client[key], transcript['Transcript_id'], transcript[key.replace('Gene', 'Transcript')]))
-                else:
-                    p("%s > %s: ens '%s' diff from client '%s'" % (ens['Ensembl_gene_id'], key, ens[key], client[key]))
+    if 'Gene_start' in client and 'Gene_stop' in client:
+        if str(ens['Gene_start']) != str(client['Gene_start']) or str(ens['Gene_stop']) != str(client['Gene_stop']):
+            # get the transcript, compare those coordinates and report
+            transcript = get_transcript(client['Gene_start'], client['Gene_stop'], ens['Ensembl_gene_id'], ens['HGNC_ID'])
+            for key in ('Gene_start', 'Gene_stop'):
+                if str(ens[key]) != str(client[key]):
+                    if transcript and len(transcript) > 1:
+                        p("%s > %s: ens '%s' diff from client '%s', but matches Transcript %s: %s" % (ens['Ensembl_gene_id'], key, ens[key], client[key], transcript['Transcript_id'], transcript[key.replace('Gene', 'Transcript')]))
+                    else:
+                        p("%s > %s: ens '%s' diff from client '%s'" % (ens['Ensembl_gene_id'], key, ens[key], client[key]))
 
     merged = client.copy()
     merged.update(ens)
@@ -276,15 +277,15 @@ def main(argv):
     conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
     ensembld_data = query(fixed_data, ['HGNC_ID', 'Ensembl_gene_id'])
 
-    # clean up the data from EnsEMBL a bit
-    munged_data = munge(ensembld_data)
-
     # fill in missing values with #NA
-    completed_data = fill(munged_data)
+    completed_data = fill(ensembld_data)
+
+    # clean up the data from EnsEMBL a bit
+    munged_data = munge(completed_data)
 
     # print the gene list
     print_header()
-    for line in completed_data:
+    for line in munged_data:
         print_line(line)
 
 if __name__ == '__main__':
