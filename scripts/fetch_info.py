@@ -57,14 +57,13 @@ def p(line):
     if verbose:
         print(line)
 
-def query(data, keys):
+def query(data, keys, try_hgnc_again=False):
     """Queries EnsEMBL. Parameters are HGNC_ID and/or Ensembl_gene_id, whatever is available. Data from EnsEMBLdb will overwrite the client data.
     A(n) identifier(s) should yield one result from EnsEMBLdb. It will be reported if a(n) identifier(s) don't yield any or multiple results.
 
     Args:
         data (list of dicts): representing the lines and columns in a gene list. The keys of the dicts must match the column names of the EnsEMBLdb query.
-        keys (list): A list of available parameters: HGNC_ID and/or Ensembl_gene_id.
-            TODO: could this now be autodetected?
+        try_hgnc_again (bool): when providing multiple HGNC ids, try until you find a match on EnsEMBLdb. Only one HGNC ID will be used in final result.
     Yields:
         dict: a row with data from ensEMBLdb filled in.
     """
@@ -72,28 +71,37 @@ def query(data, keys):
     cur = conn.cursor(pymysql.cursors.DictCursor)
 
     base_query = "select g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop, x.display_label AS HGNC_ID, g.stable_id AS Ensembl_gene_id, seq_region.name AS Chromosome from gene g join xref x on x.xref_id = g.display_xref_id join seq_region using (seq_region_id)"
-    keys_conds = { 'HGNC_ID': 'x.display_label', 'Ensembl_gene_id': 'g.stable_id' }
+    keys_conds = { 'HGNC_ID': 'x.display_label', 'Ensembl_gene_id': 'g.stable_id', 'Chromosome': 'seq_region.name' }
 
+    keys = ['HGNC_ID', 'Ensembl_gene_id', 'Chromosome'] # these columns will be put into the condition statement if they have a value
     for line in data:
-        conds = [ "%s = %%s" % keys_conds[ key ] for key in keys if key in line ]
-        cond_values = [ line[ key ] for key in keys if key in line ]
+        HGNC_IDs=line['HGNC_ID'].split(',')
 
-        query = "%s where length(seq_region.name) < 3 and %s" % ( base_query, " and ".join(conds) )
-        cur.execute(query, cond_values)
+        HGNC_ID_i=1
+        for HGNC_ID in HGNC_IDs:
+            line['HGNC_ID'] = HGNC_ID # actually replace the entry
+            conds = [ "%s = %%s" % keys_conds[ key ] for key in keys if key in line and line[key] != None ]
+            cond_values = [ line[ key ] for key in keys if key in line ]
 
-        rs = cur.fetchall() # result set
+            query = "%s where length(seq_region.name) < 3 and %s" % ( base_query, " and ".join(conds) )
+            cur.execute(query, cond_values)
 
-        # O-oh .. for now this still means manual intervention!
-        if len(rs) == 0:
-            p("Getting '%s' ... " % cond_values)
-            p('Not found!')
-            yield line
-        elif len(rs) > 1:
-            p("Getting '%s' ... " % cond_values)
-            p('Multiple entries found!')
-        else:
-            for entry in rs:
-                yield merge_line(entry, line)
+            rs = cur.fetchall() # result set
+
+            if len(rs) == 0:
+                p("Not found: %s/%s, %s" % (HGNC_ID, HGNC_IDs, cond_values))
+                if not try_hgnc_again: break
+            elif len(rs) > 1:
+                # this happens when multiple genes are overlapping with a HGNC ID
+                p("Multiple entries: '%s' ... " % cond_values)
+                for entry in rs:
+                    yield merge_line(entry, line)
+                break
+            else:
+                for entry in rs:
+                    yield merge_line(entry, line)
+                break
+            HGNC_ID_i += 1
 
 def get_transcript(start, end, ensembl_gene_id=None, hgnc_id=None):
     """Queries EnsEMBL. Parameters are HGNC_ID and/or Ensembl_gene_id, whatever is available. It will return one hit with the ensembl trasncript id.
@@ -275,7 +283,7 @@ def main(argv):
     # fill in missing blanks
     global conn
     conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
-    ensembld_data = query(fixed_data, ['HGNC_ID', 'Ensembl_gene_id'])
+    ensembld_data = query(fixed_data, True)
 
     # fill in missing values with #NA
     completed_data = fill(ensembld_data)
