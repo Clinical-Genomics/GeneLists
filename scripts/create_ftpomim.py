@@ -4,8 +4,9 @@
 from __future__ import print_function
 import sys
 import argparse
+import re
 
-omim_header=['Disease_trivial_name', 'HGNC_ID', 'OMIM_morbid', 'Gene_locus']
+omim_header=['Disease_trivial_name', 'HGNC_ID', 'OMIM_morbid', 'Gene_locus', 'Chromosome']
 
 def print_header(header=omim_header):
     """prints column headers
@@ -63,6 +64,23 @@ def remove_duplicates(data):
             yield line
         omim_ids[ omim_id ] = 1
 
+def add_chromosome_number(data):
+    """TODO: Docstring for add_chromosome_number.
+
+    Args:
+        data (list): list with values for one line of a gene list.
+
+    Yields:
+        list: with one extra column for the chromosome number
+    """
+    for line in data:
+        locus=line[3]
+        chromosome=''
+        if ( any([x for x in locus if x in ('q', 'p')]) ): # check if the locus has an q or p
+            chromosome = re.compile('p|q').split(locus)[0]
+        line.append(chromosome)
+        yield line
+
 def main(argv):
     # set up the argparser
     parser = argparse.ArgumentParser(description='Creates a gene list from an OMIM morbid file')
@@ -75,9 +93,10 @@ def main(argv):
 
     uniq_data = remove_duplicates(parsable_data)
     hgnc_data = pick_hgnc_symbol(uniq_data)
+    chro_data = add_chromosome_number(hgnc_data)
 
     print_header()
-    for line in hgnc_data:
+    for line in chro_data:
         print_line(line)
 
 if __name__ == '__main__':
