@@ -61,6 +61,36 @@ def p(line, end=os.linesep):
     if verbose:
         print(line, end=end)
 
+symbol_of = {} # omim_id: hgnc_symbol
+
+def resolve_gene(omim_id, mim2gene_file=os.path.dirname(__file__)+os.path.sep+'mim2gene.txt'):
+    """Looks up the omim_id in the mim2gene.txt file. If found and the omim type is 'gene', return the HGNC symbol
+
+    Args:
+        omim_id (int): the omim id
+
+    Kwargs:
+        mim2gene_file (str): the aboslute path to the mim2gene.txt file
+
+    Returns: on omom id match, HGNC symbol if type of gene or gene/phenotype otherwise False
+
+    """
+    global symbol_of
+
+    # read in the mim2gene.txt file
+    # TODO: djees, put this in a separate package so we don't have to rely on a global var
+    if len(symbol_of) == 0:
+        mim2gene_file = open(mim2gene_file, 'r')
+        lines = ( line.strip() for line in mim2gene_file )
+        for line in lines:
+            (file_omim_id, omim_type, gene_id, hgnc_symbol) = line.split("\t")
+            if omim_type in ('gene', 'gene/phenotype') and hgnc_symbol != '-':
+                symbol_of[file_omim_id] = hgnc_symbol
+
+    if omim_id in symbol_of:
+        return symbol_of[omim_id]
+    return False
+
 def query(data, try_hgnc_again=False):
     """Queries EnsEMBL. Parameters are HGNC_ID and/or Ensembl_gene_id, whatever is available. Data from EnsEMBLdb will overwrite the client data.
     A(n) identifier(s) should yield one result from EnsEMBLdb. It will be reported if a(n) identifier(s) don't yield any or multiple results.
@@ -80,6 +110,12 @@ def query(data, try_hgnc_again=False):
     keys = ['HGNC_ID', 'Ensembl_gene_id', 'Chromosome'] # these columns will be put into the condition statement if they have a value
     for line in data:
         HGNC_IDs=line['HGNC_ID'].split(',')
+        OMIM_id =line['OMIM_morbid']
+
+        # look up the HGNC symbol in mim2gene.txt and add it to the HGNC_IDs
+        HGNC_symbol = resolve_gene(OMIM_id)
+        if HGNC_symbol != False and HGNC_symbol not in HGNC_IDs:
+            HGNC_IDs.insert(0, HGNC_symbol)
 
         HGNC_ID_i=1
         for HGNC_ID in HGNC_IDs:
@@ -107,7 +143,7 @@ def query(data, try_hgnc_again=False):
                     yield merge_line(entry, line)
                 break
             else:
-                if HGNC_ID_i > 1:
+                if len(HGNC_IDs) > 1:
                     p("Took %s/%s" % (HGNC_ID, HGNC_IDs))
                 for entry in rs:
                     yield merge_line(entry, line)
