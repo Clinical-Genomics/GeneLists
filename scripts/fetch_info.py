@@ -14,9 +14,9 @@ gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_ID', 'Disease_group_pa
 # TODO make this prettier
 conn = None
 
-# switch: to print or not to print
-verbose = False
-errors_only = False
+verbose = False # to print or not to print
+errors_only = False # print only errors. Does not print the gene list. Needs verbose=True to work.
+mim2gene = False # resolve HGNC symbol with mim2gene.txt
 
 def print_header(header=gl_header):
     """Prints the gl_header
@@ -113,9 +113,11 @@ def query(data, try_hgnc_again=False):
         OMIM_id =line['OMIM_morbid']
 
         # look up the HGNC symbol in mim2gene.txt and add it to the HGNC_IDs
-        HGNC_symbol = resolve_gene(OMIM_id)
-        if HGNC_symbol != False and HGNC_symbol not in HGNC_IDs:
-            HGNC_IDs.insert(0, HGNC_symbol)
+        global mim2gene
+        if mim2gene:
+            HGNC_symbol = resolve_gene(OMIM_id)
+            if HGNC_symbol != False and HGNC_symbol not in HGNC_IDs:
+                HGNC_IDs.insert(0, HGNC_symbol)
 
         HGNC_ID_i=1
         for HGNC_ID in HGNC_IDs:
@@ -316,6 +318,7 @@ def main(argv):
     parser.add_argument('--verbose', default=False, action='store_true', dest='verbose', help='if set, will show conflict messages from EnsEMBLdb inbetween the gene list lines')
     parser.add_argument('--errors-only', default=False, action='store_true', dest='errors_only', help='if set, will not output the gene list, but only the conflict messages from EnsEMBLdb.')
     parser.add_argument('--download-mim2gene', default=False, action='store_true', dest='download_mim2gene', help='if set, will download a new version of the mim2gene.txt file, used to check the OMIM type')
+    parser.add_argument('--mim2gene', default=False, action='store_true', dest='mim2gene', help='if set, will try to resolve an HGNC symbol with the help of mim2gene.txt')
     args = parser.parse_args(argv)
 
     global verbose
@@ -334,6 +337,11 @@ def main(argv):
         p('Downloading mim2gene.txt ... ', end='')
         dl_filename = download_mim2gene()
         p('Done: %s' % dl_filename)
+
+    # check mem2gene.txt for HGNC symbol resolution
+    if args.mim2gene:
+        global mim2gene
+        mim2gene = True
 
     # read in the TSV file
     tsvfile = args.infile
