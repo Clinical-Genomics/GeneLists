@@ -76,8 +76,11 @@ def add_chromosome_number(data):
     for line in data:
         locus=line[3]
         chromosome=''
-        if ( any([x for x in locus if x in ('q', 'p')]) ): # check if the locus has an q or p
+        if any([x for x in locus if x in ('q', 'p')]): # check if the locus has an q or p
             chromosome = re.compile('p|q').split(locus)[0]
+        elif locus.startswith('Chr.'):
+            chromosome = locus.replace('Chr.', '')
+            
         line.append(chromosome)
         yield line
 
@@ -92,8 +95,8 @@ def main(argv):
     parsable_data = ( line.split("|") for line in raw_data )
 
     uniq_data = remove_duplicates(parsable_data)
-    hgnc_data = pick_hgnc_symbol(uniq_data)
-    chro_data = add_chromosome_number(hgnc_data)
+    #hgnc_data = pick_hgnc_symbol(uniq_data)
+    chro_data = add_chromosome_number(uniq_data)
 
     print_header()
     for line in chro_data:

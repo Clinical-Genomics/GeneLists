@@ -6,6 +6,7 @@ import sys
 import pymysql
 import argparse
 import re
+import os
 
 gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_ID', 'Disease_group_pathway', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Genetic_model', 'OMIM_gene', 'OMIM_morbid', 'Gene_locus', 'Genome_build', 'UniPort_ID', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Red_pen', 'Database']
 
@@ -15,6 +16,7 @@ conn = None
 
 # switch: to print or not to print
 verbose = False 
+errors_only = False
 
 def print_header(header=gl_header):
     """Prints the gl_header
@@ -26,7 +28,8 @@ def print_header(header=gl_header):
     Note:
         Prints to STDOUT
     """
-    print('#' + "\t".join(gl_header))
+    if not errors_only:
+        print('#' + "\t".join(gl_header))
 
 def print_line(line):
     """Prints a line based on the order of the gl_headers
@@ -40,12 +43,13 @@ def print_line(line):
     Note:
         Will print the STDOUT
     """
-    ordered_line = list()
-    for column_name in gl_header:
-        ordered_line.append(str(line[column_name]))
-    print("\t".join(ordered_line))
+    if not errors_only:
+        ordered_line = list()
+        for column_name in gl_header:
+            ordered_line.append(str(line[column_name]))
+        print("\t".join(ordered_line))
 
-def p(line):
+def p(line, end=os.linesep):
     """print only if the verbose switch has been set
 
     Args:
@@ -55,9 +59,9 @@ def p(line):
         pass
     """
     if verbose:
-        print(line)
+        print(line, end=end)
 
-def query(data, keys, try_hgnc_again=False):
+def query(data, try_hgnc_again=False):
     """Queries EnsEMBL. Parameters are HGNC_ID and/or Ensembl_gene_id, whatever is available. Data from EnsEMBLdb will overwrite the client data.
     A(n) identifier(s) should yield one result from EnsEMBLdb. It will be reported if a(n) identifier(s) don't yield any or multiple results.
 
@@ -89,15 +93,22 @@ def query(data, keys, try_hgnc_again=False):
             rs = cur.fetchall() # result set
 
             if len(rs) == 0:
-                p("Not found: %s/%s, %s" % (HGNC_ID, HGNC_IDs, cond_values))
+                if HGNC_ID_i == len(HGNC_IDs):
+                    not_found_id = HGNC_ID if len(HGNC_IDs) == 1 else HGNC_IDs
+                    p("Not found: %s, chromosome: %s" % (not_found_id, line['Chromosome']))
                 if not try_hgnc_again: break
             elif len(rs) > 1:
+                if HGNC_ID_i > 1:
+                    p("Took %s/%s" % (HGNC_ID, HGNC_IDs))
                 # this happens when multiple genes are overlapping with a HGNC ID
-                p("Multiple entries: '%s' ... " % cond_values)
+                p("Multiple entries: %s, chromosome: %s => " % tuple(cond_values), end='')
+                p("Adding: %s" % ', '.join(( line['Ensembl_gene_id'] for line in rs )) )
                 for entry in rs:
                     yield merge_line(entry, line)
                 break
             else:
+                if HGNC_ID_i > 1:
+                    p("Took %s/%s" % (HGNC_ID, HGNC_IDs))
                 for entry in rs:
                     yield merge_line(entry, line)
                 break
@@ -253,13 +264,20 @@ def main(argv):
     parser = argparse.ArgumentParser(description='Queries EnsEMBL and fills in the blanks of a gene list. Only columns headers found in gl_headers will be used')
     parser.add_argument('infile', type=argparse.FileType('r'), help='the tsv file with correct headers')
     parser.add_argument('--zero', default=False, action='store_true', dest='zero_based', help='if set, will convert 0-based coordinates to 1-based')
-    parser.add_argument('--verbose', default=False, action='store_true', dest='verbose', help='if set, will convert 0-based coordinates to 1-based')
+    parser.add_argument('--verbose', default=False, action='store_true', dest='verbose', help='if set, will show conflict messages from EnsEMBLdb inbetween the gene list lines')
+    parser.add_argument('--errors-only', default=False, action='store_true', dest='errors_only', help='if set, will not output the gene list, but only the conflict messages from EnsEMBLdb.')
     args = parser.parse_args(argv)
 
+    global verbose
     # make sure we print if we are asked to
     if args.verbose:
-        global verbose
         verbose = True
+
+    # show only the EnsEMBLdb conflicts - so verbose, but supress printing of the gene list
+    if args.errors_only:
+        global errors_only
+        verbose = True
+        errors_only = True
 
     # read in the TSV file
     tsvfile = args.infile
@@ -283,7 +301,7 @@ def main(argv):
     # fill in missing blanks
     global conn
     conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
-    ensembld_data = query(fixed_data, True)
+    ensembld_data = query(fixed_data, try_hgnc_again=True)
 
     # fill in missing values with #NA
     completed_data = fill(ensembld_data)
