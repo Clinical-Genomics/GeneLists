@@ -15,7 +15,7 @@ gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_ID', 'Disease_group_pa
 conn = None
 
 # switch: to print or not to print
-verbose = False 
+verbose = False
 errors_only = False
 
 def print_header(header=gl_header):
@@ -259,6 +259,19 @@ def zero2one(data):
             line[key] = int(line[key]) + 1
         yield line
 
+def download_mim2gene():
+    """Download the mim2gene.txt file from omim ftp server. By default the file
+    will be downloaded to the location of the script.
+
+
+    Returns (str): full path and filename of the mim2gene.txt
+    """
+    from urllib.request import urlretrieve
+
+    filename = os.path.dirname(__file__) + os.path.sep + 'mim2gene.txt'
+    (dl_filename, headers) = urlretrieve('ftp://anonymous:kennybilliau%40scilifelab.se@ftp.omim.org/OMIM/mim2gene.txt', filename)
+    return dl_filename
+
 def main(argv):
     # set up the argparser
     parser = argparse.ArgumentParser(description='Queries EnsEMBL and fills in the blanks of a gene list. Only columns headers found in gl_headers will be used')
@@ -266,6 +279,7 @@ def main(argv):
     parser.add_argument('--zero', default=False, action='store_true', dest='zero_based', help='if set, will convert 0-based coordinates to 1-based')
     parser.add_argument('--verbose', default=False, action='store_true', dest='verbose', help='if set, will show conflict messages from EnsEMBLdb inbetween the gene list lines')
     parser.add_argument('--errors-only', default=False, action='store_true', dest='errors_only', help='if set, will not output the gene list, but only the conflict messages from EnsEMBLdb.')
+    parser.add_argument('--download-mim2gene', default=False, action='store_true', dest='download_mim2gene', help='if set, will download a new version of the mim2gene.txt file, used to check the OMIM type')
     args = parser.parse_args(argv)
 
     global verbose
@@ -278,6 +292,12 @@ def main(argv):
         global errors_only
         verbose = True
         errors_only = True
+
+    # download a new version of mim2gene.txt
+    if args.download_mim2gene:
+        p('Downloading mim2gene.txt ... ', end='')
+        dl_filename = download_mim2gene()
+        p('Done: %s' % dl_filename)
 
     # read in the TSV file
     tsvfile = args.infile
