@@ -110,11 +110,11 @@ def query(data, try_hgnc_again=False):
     keys = ['HGNC_ID', 'Ensembl_gene_id', 'Chromosome'] # these columns will be put into the condition statement if they have a value
     for line in data:
         HGNC_IDs=line['HGNC_ID'].split(',')
-        OMIM_id =line['OMIM_morbid']
 
         # look up the HGNC symbol in mim2gene.txt and add it to the HGNC_IDs
         global mim2gene
-        if mim2gene:
+        if mim2gene and 'OMIM_morbid' in line:
+            OMIM_id = line['OMIM_morbid']
             HGNC_symbol = resolve_gene(OMIM_id)
             if HGNC_symbol != False and HGNC_symbol not in HGNC_IDs:
                 HGNC_IDs.insert(0, HGNC_symbol)
