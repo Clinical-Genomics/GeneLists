@@ -133,14 +133,20 @@ def query(data, try_hgnc_again=False):
             if len(rs) == 0:
                 if HGNC_ID_i == len(HGNC_IDs):
                     not_found_id = HGNC_ID if len(HGNC_IDs) == 1 else HGNC_IDs
-                    p("Not found: %s, chromosome: %s" % (not_found_id, line['Chromosome']))
+                    if 'Chromosome' in line:
+                        p("Not found: %s, chromosome: %s" % (not_found_id, line['Chromosome']))
+                    else:
+                        p("Not found: %s" % not_found_id)
                 if not try_hgnc_again: break
             elif len(rs) > 1:
                 if HGNC_ID_i > 1:
                     p("Took %s/%s" % (HGNC_ID, HGNC_IDs))
                 # this happens when multiple genes are overlapping with a HGNC ID
-                p("Multiple entries: %s, chromosome: %s => " % tuple(cond_values), end='')
-                p("Adding: %s" % ', '.join(( line['Ensembl_gene_id'] for line in rs )) )
+                if 'Chromosome' in line:
+                    p("Multiple entries: %s, chromosome: %s => " % (HGNC_ID, line['Chromosome']), end='')
+                else:
+                    p("Multiple entries: %s => " % (HGNC_ID), end='')
+                p("Adding: %s" % ', '.join(( entry['Ensembl_gene_id'] for entry in rs )) )
                 for entry in rs:
                     yield merge_line(entry, line)
                 break
