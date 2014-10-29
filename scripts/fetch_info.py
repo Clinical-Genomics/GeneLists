@@ -62,31 +62,36 @@ def p(line, end=os.linesep):
         print(line, end=end)
 
 symbol_of = {} # omim_id: hgnc_symbol
+type_of = {} # hgnc_symbol: type
 
-def resolve_gene(omim_id, mim2gene_file=os.path.dirname(__file__)+os.path.sep+'mim2gene.txt'):
+# TODO: djees, put this in a separate package so we don't have to rely on a global var
+def cache_mim2gene(mim2gene_file=os.path.dirname(__file__)+os.path.sep+'mim2gene.txt'):
+    """Read in the mim2gene file and store it as a dict of OMIM id: HGNC_symbol. Only gene and gene/phenotype types will be saved.
+
+    Kwargs:
+        mim2gene_file (str): the aboslute path to the mim2gene.txt file
+
+    Returns: None
+    """
+    global symbol_of
+    mim2gene_fh = open(mim2gene_file, 'r')
+    lines = ( line.strip() for line in mim2gene_fh )
+    for line in lines:
+        (file_omim_id, omim_type, gene_id, hgnc_symbol) = line.split("\t")
+        if omim_type in ('gene', 'gene/phenotype') and hgnc_symbol != '-':
+            symbol_of[file_omim_id] = hgnc_symbol
+        type_of[hgnc_symbol] = omim_type
+
+def resolve_gene(omim_id):
     """Looks up the omim_id in the mim2gene.txt file. If found and the omim type is 'gene', return the HGNC symbol
 
     Args:
         omim_id (int): the omim id
 
-    Kwargs:
-        mim2gene_file (str): the aboslute path to the mim2gene.txt file
-
     Returns: on omom id match, HGNC symbol if type of gene or gene/phenotype otherwise False
 
     """
     global symbol_of
-
-    # read in the mim2gene.txt file
-    # TODO: djees, put this in a separate package so we don't have to rely on a global var
-    if len(symbol_of) == 0:
-        mim2gene_file = open(mim2gene_file, 'r')
-        lines = ( line.strip() for line in mim2gene_file )
-        for line in lines:
-            (file_omim_id, omim_type, gene_id, hgnc_symbol) = line.split("\t")
-            if omim_type in ('gene', 'gene/phenotype') and hgnc_symbol != '-':
-                symbol_of[file_omim_id] = hgnc_symbol
-
     if omim_id in symbol_of:
         return symbol_of[omim_id]
     return False
@@ -294,7 +299,7 @@ def zero2one(data):
     """Fix 0-based coordinates to 1-based coordinates
 
     Args:
-        data (list of lists): Inner list represents a row in a gene list
+        data (list of dicts): Inner dict represents a row in a gene list
     Yields:
         dict: the fixed coordinates data dict
     """
@@ -302,6 +307,26 @@ def zero2one(data):
         for key in ('Gene_start', 'Gene_stop'):
             line[key] = int(line[key]) + 1
         yield line
+
+def remove_non_genes(data):
+    """Based on mim2gene.txt, you can remove all non genes. The global type_of dict provides the type of the hgnc symbol.
+
+    Args:
+        data (list of dicts): Inner dict represents a row in a gene list
+
+    Yields:
+        dict: with all-non genes removed
+
+    """
+    for line in data:
+        if 'HGNC_ID' not in line:
+            p('Passthrough of %s' % line)
+            yield line
+        elif line['HGNC_ID'] in type_of and type_of[ line['HGNC_ID'] ] in ('gene', 'gene/phenotype'):
+            p('%s is a %s' % (line['HGNC_ID'], type_of[ line['HGNC_ID'] ]))
+            yield line
+        else:
+            p('Removed %s' % line)
 
 def download_mim2gene():
     """Download the mim2gene.txt file from omim ftp server. By default the file
@@ -348,6 +373,7 @@ def main(argv):
     if args.mim2gene:
         global mim2gene
         mim2gene = True
+        cache_mim2gene()
 
     # read in the TSV file
     tsvfile = args.infile
@@ -373,8 +399,14 @@ def main(argv):
     conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
     ensembld_data = query(fixed_data, try_hgnc_again=True)
 
+    # remove non-genes based on mim2gene.txt
+    if mim2gene:
+        reduced_data = remove_non_genes(ensembld_data)
+    else:
+        reduced_data = ensembld_data
+
     # fill in missing values with #NA
-    completed_data = fill(ensembld_data)
+    completed_data = fill(reduced_data)
 
     # clean up the data from EnsEMBL a bit
     munged_data = munge(completed_data)
