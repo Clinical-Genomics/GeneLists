@@ -300,26 +300,27 @@ def zero2one(data):
         yield line
 
 def add_mim2gene_alias(data):
-    """TODO: Docstring for add_mim2gene_alias.
+    """Looks up the most recent HGNC symbol for an HGNC alias in mim2gene.txt and
+    prepends it to the HGNC_ID column.
+    Normally, the most recent symbol will have more chance to have a hit in EnsEMBLdb.
+    Only use this function when mim2gene switch is active
 
     Args:
-        data (TODO): TODO
+        data (list of dicts): Inner dict represents a row in a gene list
 
-    Returns: TODO
+    Yields:
+        dict: with the added HGNC symbol prepended to the HGNC_ID column.
 
     """
-    # mim2gene.txt and add it to the HGNC_IDs
-    global mim2gene
-    if mim2gene:
-        for line in data:
-            if 'OMIM_morbid' in line:
-                HGNC_IDs = line['HGNC_ID'].split(',')
-                OMIM_id  = line['OMIM_morbid']
-                HGNC_symbol = resolve_gene(OMIM_id)
-                if HGNC_symbol != False and HGNC_symbol not in HGNC_IDs:
-                    HGNC_IDs.insert(0, HGNC_symbol)
-            line['HGNC_ID'] = ','.join(HGNC_IDs)
-            yield line
+    for line in data:
+        if 'OMIM_morbid' in line:
+            HGNC_IDs = line['HGNC_ID'].split(',')
+            OMIM_id  = line['OMIM_morbid']
+            HGNC_symbol = resolve_gene(OMIM_id)
+            if HGNC_symbol != False and HGNC_symbol not in HGNC_IDs:
+                HGNC_IDs.insert(0, HGNC_symbol)
+        line['HGNC_ID'] = ','.join(HGNC_IDs)
+        yield line
 
 def remove_non_genes(data):
     """Based on mim2gene.txt, you can remove all non genes. The global type_of dict provides the type of the hgnc symbol.
