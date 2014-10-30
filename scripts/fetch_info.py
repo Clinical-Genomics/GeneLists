@@ -115,15 +115,6 @@ def query(data, try_hgnc_again=False):
     keys = ['HGNC_ID', 'Ensembl_gene_id', 'Chromosome'] # these columns will be put into the condition statement if they have a value
     for line in data:
         HGNC_IDs=line['HGNC_ID'].split(',')
-
-        # look up the HGNC symbol in mim2gene.txt and add it to the HGNC_IDs
-        global mim2gene
-        if mim2gene and 'OMIM_morbid' in line:
-            OMIM_id = line['OMIM_morbid']
-            HGNC_symbol = resolve_gene(OMIM_id)
-            if HGNC_symbol != False and HGNC_symbol not in HGNC_IDs:
-                HGNC_IDs.insert(0, HGNC_symbol)
-
         HGNC_ID_i=1
         for HGNC_ID in HGNC_IDs:
             line['HGNC_ID'] = HGNC_ID # actually replace the entry
@@ -308,6 +299,28 @@ def zero2one(data):
             line[key] = int(line[key]) + 1
         yield line
 
+def add_mim2gene_alias(data):
+    """TODO: Docstring for add_mim2gene_alias.
+
+    Args:
+        data (TODO): TODO
+
+    Returns: TODO
+
+    """
+    # mim2gene.txt and add it to the HGNC_IDs
+    global mim2gene
+    if mim2gene:
+        for line in data:
+            if 'OMIM_morbid' in line:
+                HGNC_IDs = line['HGNC_ID'].split(',')
+                OMIM_id  = line['OMIM_morbid']
+                HGNC_symbol = resolve_gene(OMIM_id)
+                if HGNC_symbol != False and HGNC_symbol not in HGNC_IDs:
+                    HGNC_IDs.insert(0, HGNC_symbol)
+            line['HGNC_ID'] = ','.join(HGNC_IDs)
+            yield line
+
 def remove_non_genes(data):
     """Based on mim2gene.txt, you can remove all non genes. The global type_of dict provides the type of the hgnc symbol.
 
@@ -319,14 +332,19 @@ def remove_non_genes(data):
 
     """
     for line in data:
-        if 'HGNC_ID' not in line:
-            p('Passthrough of %s' % line)
-            yield line
-        elif line['HGNC_ID'] in type_of and type_of[ line['HGNC_ID'] ] in ('gene', 'gene/phenotype'):
-            p('%s is a %s' % (line['HGNC_ID'], type_of[ line['HGNC_ID'] ]))
+        if 'HGNC_ID' not in line: # can't use mim2gene if there is no HGNC symbol
             yield line
         else:
-            p('Removed %s' % line)
+            yielded = False
+            HGNC_IDs = line['HGNC_ID'].split(',')
+
+            for HGNC_ID in HGNC_IDs:
+                if HGNC_ID in type_of and type_of[ HGNC_ID ] in ('gene', 'gene/phenotype'):
+                    yield line
+                    yielded = True
+                    break
+            if not yielded:
+                p('Removed: %s' % line)
 
 def download_mim2gene():
     """Download the mim2gene.txt file from omim ftp server. By default the file
@@ -394,19 +412,21 @@ def main(argv):
     else:
         fixed_data = dict_data
 
+    # add the mim2gene alias to HGNC_ID
+    # remove non-genes based on mim2gene.txt
+    if mim2gene:
+        aliased_data = add_mim2gene_alias(fixed_data)
+        reduced_data = remove_non_genes(aliased_data)
+    else:
+        reduced_data = fixed_data 
+
     # fill in missing blanks
     global conn
     conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
-    ensembld_data = query(fixed_data, try_hgnc_again=True)
-
-    # remove non-genes based on mim2gene.txt
-    if mim2gene:
-        reduced_data = remove_non_genes(ensembld_data)
-    else:
-        reduced_data = ensembld_data
+    ensembld_data = query(reduced_data, try_hgnc_again=True)
 
     # fill in missing values with #NA
-    completed_data = fill(reduced_data)
+    completed_data = fill(ensembld_data)
 
     # clean up the data from EnsEMBL a bit
     munged_data = munge(completed_data)
