@@ -65,7 +65,7 @@ symbol_of = {} # omim_id: hgnc_symbol
 type_of = {} # hgnc_symbol: type
 
 # TODO: djees, put this in a separate package so we don't have to rely on a global var
-def cache_mim2gene(mim2gene_file=os.path.dirname(__file__)+os.path.sep+'mim2gene.txt'):
+def cache_mim2gene(mim2gene_file=os.path.dirname(os.path.abspath(__file__))+os.path.sep+'mim2gene.txt'):
     """Read in the mim2gene file and store it as a dict of OMIM id: HGNC_symbol. Only gene and gene/phenotype types will be saved.
 
     Kwargs:
@@ -356,7 +356,7 @@ def download_mim2gene():
     """
     from urllib.request import urlretrieve
 
-    filename = os.path.dirname(__file__) + os.path.sep + 'mim2gene.txt'
+    filename = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + 'mim2gene.txt'
     (dl_filename, headers) = urlretrieve('ftp://anonymous:kennybilliau%40scilifelab.se@ftp.omim.org/OMIM/mim2gene.txt', filename)
     return dl_filename
 
