@@ -7,11 +7,17 @@ if [[ -z $1 ]]; then
 fi
 
 for dir in `ls $1`; do
-   lists=(`ls ${1}/${dir}/*txt`)
-   echo ${dir}
-   for list in ${dir}/${lists[@]}; do
-       list=`basename "$list"`
-       list=`echo ${list} | sed 's/.*-\(.*\).txt/\1/'`
-       echo "     $list"
-   done
+    echo ${dir}
+    if [[ -e ${1}/${dir}/LISTS ]]; then
+        while read LINE; do
+            echo "	$LINE"
+        done < ${1}/${dir}/LISTS 
+    else
+        lists=(`ls ${1}/${dir}/*txt`)
+        for list in ${dir}/${lists[@]}; do
+            list=`basename "$list"`
+            list=`echo ${list} | sed 's/.*-\(.*\).txt/\1/'`
+            echo "	$list"
+        done
+    fi
 done
