@@ -7,6 +7,7 @@ import pymysql
 import argparse
 import re
 import os
+from urllib.request import urlretrieve, Request, urlopen
 
 gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_ID', 'Disease_group_pathway', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Genetic_model', 'OMIM_gene', 'OMIM_morbid', 'Gene_locus', 'Genome_build', 'UniPort_ID', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Red_pen', 'Database']
 
@@ -60,6 +61,24 @@ def p(line, end=os.linesep):
     """
     if verbose:
         print(line, end=end)
+
+def resolve_ensembl_id(hgnc_id):
+    """Query genenames.org for the EnsEMBL gene id based on the HGNC symbol.
+
+    Args:
+        hgnc_id (str): the HGNC symbol
+
+    Returns (str): The ensEMBL gene id
+
+    """
+    import json
+    response = urlopen(Request("http://rest.genenames.org/fetch/symbol/%s" % hgnc_id, None, {'Accept':'application/json'}))
+    data = response.read().decode('UTF-8')
+    data = json.loads(data)
+    try:
+        return data['response']['docs'][0]['ensembl_gene_id']
+    except KeyError as ke:
+        return False
 
 symbol_of = {} # omim_id: hgnc_symbol
 type_of = {} # hgnc_symbol: type
@@ -137,7 +156,19 @@ def query(data, try_hgnc_again=False):
             elif len(rs) > 1:
                 if HGNC_ID_i > 1:
                     p("Took %s/%s" % (HGNC_ID, HGNC_IDs))
-                # this happens when multiple genes are overlapping with a HGNC ID
+
+                # This happens when multiple genes are overlapping with a HGNC ID
+                # Query genenames.org to pick one EnsEMBL gene id
+#                gn_ensembl_id = resolve_ensembl_id(HGNC_ID)
+#                if gn_ensembl_id:
+#                    matching_lines = [ line for line in rs if line['Ensembl_gene_id'] == gn_ensembl_id ] # yields one entry
+#                    if len(matching_lines) > 0:
+#                        p("Took %s" % gn_ensembl_id)
+#                        for entry in matching_lines:
+#                            yield merge_line(entry, line)
+#                        break
+                
+                # we couldn't resolve this with genenames.org
                 if 'Chromosome' in line:
                     p("Multiple entries: %s, chromosome: %s => " % (HGNC_ID, line['Chromosome']), end='')
                 else:
@@ -354,8 +385,6 @@ def download_mim2gene():
 
     Returns (str): full path and filename of the mim2gene.txt
     """
-    from urllib.request import urlretrieve
-
     filename = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + 'mim2gene.txt'
     (dl_filename, headers) = urlretrieve('ftp://anonymous:kennybilliau%40scilifelab.se@ftp.omim.org/OMIM/mim2gene.txt', filename)
     return dl_filename
