@@ -2,9 +2,7 @@
 
 #
 # usage:
-#    create_ataxia.sh path-to-cust-repo
-#
-#
+#    create_ataxia.sh path-to-cust-repo [outputfile [database name]]
 #
 
 # exit on errr
@@ -19,6 +17,7 @@ trap cleanup EXIT
 
 REPODIR=$1
 OUTPUTFILE=${2-cust002-ATX.txt}
+FULLLISTNAME=${3-'FullList'} # combine multiple gene lists into one big list with this name
 
 # gene lists we need to process
 declare -A FILES=( [Ataxia_AutRec_MP_DN.txt]=ATXAR [ataxia_list_MP.txt]=ATX [other_dominant_ataxia_genelist_MP_DN.txt]=ATXDOM [SCA_genelist_MP_DN.txt]=SCA [SpasticParaplegia_genelist_MP_DN.txt]=SP [spastic_paraplegia_related_140911_MP_DN.txt]=SPREL )
@@ -45,7 +44,7 @@ echo "Lists are at '$PROCESSDIR'"
 # cd to $PROCESSDIR - make sure the rest of the script runs on these files
 cd $PROCESSDIR
 
-# add the right Database name, adding the FullList
+# add the right Database name
 echo "Adding the right database ..."
 for f in `ls $PROCESSDIR`; do
     TMPFILE=`mktemp`
@@ -53,7 +52,7 @@ for f in `ls $PROCESSDIR`; do
     DATABASE=${FILES[$FILENAME]}
     echo "	$FILENAME: $DATABASE"
     while read line; do
-        echo "$line	$DATABASE:FullList" >> $TMPFILE
+        echo "$line	$DATABASE" >> $TMPFILE
     done < $f
     mv $TMPFILE $f
 done
@@ -61,7 +60,33 @@ echo "Done."
 
 # copy them all into one gene list file
 echo -n "Copying to the one list ..."
-cat ${!FILES[@]} > $REPODIR/$OUTPUTFILE
+cat ${!FILES[@]} | sort > $REPODIR/$OUTPUTFILE
+echo "Done."
+
+# merge duplicated entries
+echo -n "Merging duplicated entries ..."
+PREVSYMBOL=''
+DATABASES=()
+TMPFILE=`mktemp`
+while read LINE; do
+    IFS=$'\t' read -a LINE <<< "$LINE"
+    if [[ "${LINE[0]}" == "$PREVSYMBOL" ]]; then
+        DATABASES+=(${LINE[1]})
+    else
+        if [[ -n $PREVSYMBOL ]]; then
+            DATABASES+=($FULLLISTNAME)
+            DATABASE=$(IFS=,; echo "${DATABASES[*]}")
+            echo "$PREVSYMBOL	$DATABASE" >> $TMPFILE
+        fi
+        DATABASES=(${LINE[1]})
+    fi
+    PREVSYMBOL=${LINE[0]}
+done < $REPODIR/$OUTPUTFILE
+DATABASES+=($FULLLISTNAME)
+DATABASE=$(IFS=,; echo "${DATABASES[*]}")
+echo "$PREVSYMBOL	$DATABASE" >> $TMPFILE
+
+mv $TMPFILE $REPODIR/$OUTPUTFILE
 echo "Done."
 
 # add the right headers
