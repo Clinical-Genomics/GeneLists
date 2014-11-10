@@ -2,8 +2,7 @@
 *.pyc
 __pycache__
 
-
-# ignore the exampe files
+# ignore the example files
 *.csv
 *.tsv
 *.xls
@@ -15,3 +14,5 @@ lib
 include
 lists
 
+# ignore some bash includes
+log.bash
