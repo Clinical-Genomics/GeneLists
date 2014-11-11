@@ -9,7 +9,9 @@ log $(getversion)
 MIPREFDIR=${1-'/mnt/hds/proj/bioinfo/mip/mip_references/'}
 BITBUCKETDIR=${2-"${MIPREFDIR}/GeneLists/"}
 
+SCRIPTDIR=`dirname $(readlink -f $0)`
 CWD=`pwd`
+
 for CUSTDIR in `ls -1 -d ${BITBUCKETDIR}/cust???`; do
     log "cd ${CUSTDIR}"
     cd "${CUSTDIR}"
@@ -20,8 +22,12 @@ for CUSTDIR in `ls -1 -d ${BITBUCKETDIR}/cust???`; do
     [[ -n $! ]] && exit 1 # if there is any conflict, exit
 
     for LIST in `ls -1 ${CUSTDIR}/*.txt`; do
-        LIST=`basename "${LIST}"`
+        # validate
+        log "perl ${SCRIPTDIR}/dbParser.pl ${LIST}"
+        perl ${SCRIPTDIR}/dbParser.pl ${LIST} # will halt the script on fail
+        
         # link the lists
+        LIST=`basename "${LIST}"`
         if [[ ! -e "${MIPREFDIR}/${LIST}" ]]; then
             log "ln -s \"${CUSTDIR}/${LIST}\" \"${MIPREFDIR}/${LIST}\""
             ln -s "${CUSTDIR}/${LIST}" "${MIPREFDIR}/${LIST}"
