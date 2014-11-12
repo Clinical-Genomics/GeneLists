@@ -19,7 +19,7 @@ for CUSTDIR in `ls -1 -d ${BITBUCKETDIR}/cust???`; do
     # pull the repo's
     log "git pull"
     git pull
-    [[ -n $! ]] && exit 1 # if there is any conflict, exit
+    [[ -n $? ]] && exit 1 # if there is any conflict, exit
 
     for LIST in `ls -1 ${CUSTDIR}/*.txt`; do
         # validate
