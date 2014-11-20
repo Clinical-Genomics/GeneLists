@@ -344,8 +344,8 @@ def add_mim2gene_alias(data):
 
     """
     for line in data:
+        HGNC_IDs = line['HGNC_ID'].split(',')
         if 'OMIM_morbid' in line:
-            HGNC_IDs = line['HGNC_ID'].split(',')
             OMIM_id  = line['OMIM_morbid']
             HGNC_symbol = resolve_gene(OMIM_id)
             if HGNC_symbol != False and HGNC_symbol not in HGNC_IDs:
