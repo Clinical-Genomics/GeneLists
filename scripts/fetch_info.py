@@ -7,6 +7,8 @@ import pymysql
 import argparse
 import re
 import os
+from omim import OMIM
+import ConfigParser
 from urllib.request import urlretrieve, Request, urlopen
 
 gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_ID', 'Disease_group_pathway', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Genetic_model', 'OMIM_gene', 'OMIM_morbid', 'Gene_locus', 'Genome_build', 'UniPort_ID', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Red_pen', 'Database']
@@ -167,7 +169,7 @@ def query(data, try_hgnc_again=False):
 #                        for entry in matching_lines:
 #                            yield merge_line(entry, line)
 #                        break
-                
+
                 # we couldn't resolve this with genenames.org
                 if 'Chromosome' in line:
                     p("Multiple entries: %s, chromosome: %s => " % (HGNC_ID, line['Chromosome']), end='')
@@ -389,6 +391,44 @@ def download_mim2gene():
     (dl_filename, headers) = urlretrieve('ftp://anonymous:kennybilliau%40scilifelab.se@ftp.omim.org/OMIM/mim2gene.txt', filename)
     return dl_filename
 
+def query_omim(data):
+    """Queries OMIM to fill in the inheritance models
+
+    Args:
+        data (list of dicts): Inner dict represents a row in a gene list
+
+    Yields:
+        dict: with the added HGNC symbol prepended to the HGNC_ID column.
+    """
+    TERMS_MAPPER = {
+      'Autosomal recessive': 'AR',
+      'Autosomal dominant': 'AD',
+      'X-linked dominant': 'XD',
+      'X-linked recessive': 'XR',
+      'Autosomal dominant; Isolated cases': 'AD'
+    }
+
+    omim = OMIM()
+    for line in data:
+        if 'HGNC_ID' in line:
+            entry = omim.inheritance(line['HGNC_ID'])
+            models = set (phenotype['inheritance'] for phenotype in entry['phenotypes'])
+            terms = [TERMS_MAPPER.get(model_human, model_human) for model_human in models]
+            line['Genetic_model'] = ','.join(terms)
+        yield line
+
+def read_config(file='genelist.cfg'):
+    """Reads in config file
+
+    Kwargs:
+        file (str): location of the configuration file. Defaults to 'genelist.cfg'
+
+    Returns: config object
+
+    """
+    config = ConfigParser.RawConfigParser()
+
+
 def main(argv):
     # set up the argparser
     parser = argparse.ArgumentParser(description='Queries EnsEMBL and fills in the blanks of a gene list. Only columns headers found in gl_headers will be used')
@@ -448,15 +488,18 @@ def main(argv):
         aliased_data = add_mim2gene_alias(fixed_data)
         reduced_data = remove_non_genes(aliased_data)
     else:
-        reduced_data = fixed_data 
+        reduced_data = fixed_data
 
     # fill in missing blanks
     global conn
     conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
     ensembld_data = query(reduced_data, try_hgnc_again=True)
 
+    # fill in the inheritance models
+    omim_data = query_omim(ensembld_data)
+
     # fill in missing values with #NA
-    completed_data = fill(ensembld_data)
+    completed_data = fill(omim_data)
 
     # clean up the data from EnsEMBL a bit
     munged_data = munge(completed_data)
