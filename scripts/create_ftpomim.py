@@ -6,7 +6,7 @@ import sys
 import argparse
 import re
 
-omim_header=['Disease_trivial_name', 'HGNC_ID', 'OMIM_morbid', 'Gene_locus', 'Chromosome']
+omim_header=['Disease_trivial_name', 'HGNC_ID', 'OMIM_morbid', 'Gene_locus', 'Chromosome', 'Database']
 
 def print_header(header=omim_header):
     """prints column headers
@@ -84,22 +84,44 @@ def add_chromosome_number(data):
         line.append(chromosome)
         yield line
 
+def add_database(data, database):
+    """TODO: Docstring for add_database.
+
+    Args:
+        data (list): list with values for one line of a gene list.
+
+    Yields:
+        list: with one extra column for the database
+    """
+
+    if not database:
+        import time
+        database = 'OMIM-'
+        database += time.strftime("%y%m%d")
+
+    for line in data:
+        line.append(database)
+        yield line
+
 def main(argv):
     # set up the argparser
     parser = argparse.ArgumentParser(description='Creates a gene list from an OMIM morbid file')
     parser.add_argument('infile', type=argparse.FileType('r'), help='the OMIM morbid file with columns: phenotype, HGNC symbols, OMIM ID, gene locus')
+    parser.add_argument('-d', default=None, dest='database', help='The value for the database field. Defaults to "OMIM-" with the current date appended')
     args = parser.parse_args(argv)
 
     omimfile = args.infile
+    database = args.database
     raw_data = ( line.strip() for line in omimfile) # sluuuurp
     parsable_data = ( line.split("|") for line in raw_data )
 
     uniq_data = remove_duplicates(parsable_data)
     #hgnc_data = pick_hgnc_symbol(uniq_data)
     chro_data = add_chromosome_number(uniq_data)
+    db_data = add_database(chro_data, database)
 
     print_header()
-    for line in chro_data:
+    for line in db_data:
         print_line(line)
 
 if __name__ == '__main__':
