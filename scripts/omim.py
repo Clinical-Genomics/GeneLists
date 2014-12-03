@@ -4,7 +4,6 @@ from datetime import datetime
 
 import requests
 
-
 def format_entry(json_entry):
   """Extract interesting information from a single OMIM entry."""
   # extract nested titles section
@@ -57,24 +56,11 @@ class OMIM(object):
     response_format (str): format for response (xml, json, etc.)
   """
 
-  def __init__(self, app=None, response_format='json'):
+  def __init__(self, api_key, response_format='json'):
     super(OMIM, self).__init__()
     self.base_url = 'http://api.europe.omim.org/api'
     self.format = response_format
-
-    if app:
-      self.init_app(app)
-
-  def init_app(self, app):
-    """Lazy load class after running ``__init__``.
-
-    The Flask config must contain an API key defined as
-    ``OMIM_API_KEY``.
-
-    Args:
-      app (Flask): initialized Flask app instance
-    """
-    self.api_key = app.config['OMIM_API_KEY']
+    self.api_key = api_key
 
   def base(self, handler):
     """Compose url and universal params for any request handler.
@@ -114,6 +100,15 @@ class OMIM(object):
     params['include'] = include
 
     res = requests.get(url, params=params)
+
+    # when we get trottled, give it a sec
+    sleep = 1
+    while res.status_code == requests.codes.conflict:
+        import time
+        time.sleep(sleep)
+        res = requests.get(url, params=params)
+        sleep *= 2
+
     data = res.json()
 
     entries = data['omim']['searchResponse']['entryList']

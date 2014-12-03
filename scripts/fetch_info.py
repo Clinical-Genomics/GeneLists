@@ -7,8 +7,8 @@ import pymysql
 import argparse
 import re
 import os
+from time import sleep
 from omim import OMIM
-import ConfigParser
 from urllib.request import urlretrieve, Request, urlopen
 
 gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_ID', 'Disease_group_pathway', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Genetic_model', 'OMIM_gene', 'OMIM_morbid', 'Gene_locus', 'Genome_build', 'UniPort_ID', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Red_pen', 'Database']
@@ -408,26 +408,25 @@ def query_omim(data):
       'Autosomal dominant; Isolated cases': 'AD'
     }
 
-    omim = OMIM()
+    TERMS_BLACKLIST = [
+      'Isolated cases',
+    ]
+
+    omim = OMIM(api_key='<fill in key>')
     for line in data:
         if 'HGNC_ID' in line:
-            entry = omim.inheritance(line['HGNC_ID'])
-            models = set (phenotype['inheritance'] for phenotype in entry['phenotypes'])
-            terms = [TERMS_MAPPER.get(model_human, model_human) for model_human in models]
+            entry = omim.gene(line['HGNC_ID'])
+            #models = set(phenotype['inheritance'] for phenotype in entry['phenotypes'] if phenotype['inheritance'] is not None)
+            models = set()
+            for phenotype in entry['phenotypes']:
+                if phenotype['inheritance'] is None: continue
+                models.update([model.strip('? ') for model in phenotype['inheritance'].split(';')])
+                models = models.difference(TERMS_BLACKLIST)
+
+            terms = (TERMS_MAPPER.get(model_human, model_human) for model_human in models)
             line['Genetic_model'] = ','.join(terms)
+            sleep(0.25) # wait for 250ms as according to OMIM specs
         yield line
-
-def read_config(file='genelist.cfg'):
-    """Reads in config file
-
-    Kwargs:
-        file (str): location of the configuration file. Defaults to 'genelist.cfg'
-
-    Returns: config object
-
-    """
-    config = ConfigParser.RawConfigParser()
-
 
 def main(argv):
     # set up the argparser
