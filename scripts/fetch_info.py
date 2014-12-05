@@ -405,7 +405,6 @@ def query_omim(data):
       'Autosomal dominant': 'AD',
       'X-linked dominant': 'XD',
       'X-linked recessive': 'XR',
-      'Autosomal dominant; Isolated cases': 'AD'
     }
 
     TERMS_BLACKLIST = [
