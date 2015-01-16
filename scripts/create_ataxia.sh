@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Creates one master list out of several Ataxia gene lists.
 #
 # usage:
 #    create_ataxia.sh path-to-cust-repo [outputfile [database name]]
