@@ -16,63 +16,75 @@ cleanup() {
 }
 trap cleanup EXIT
 
+uniqify() {
+    echo "$1" | tr ' ' '\n' | sort -u | tr '\n' ' '
+}
+
+
 REPODIR=$1
 OUTPUTFILE=${2-'FullList.txt'}
 FULLLISTNAME=${3-'FullList'} # combine multiple gene lists into one big list with this name
 
-# copy them to easily work with them - CD to $REPODIR/original/ClinGeneLists/src:
-echo -n "Copying lists ..."
-PROCESSDIR=`mktemp -d`
-cd $REPODIR
-for GENELIST in $REPODIR/cust???/cust*txt
-do
-    cp $GENELIST $PROCESSDIR
-done
-echo "Lists are at '$PROCESSDIR'"
-
 # cd to $PROCESSDIR - make sure the rest of the script runs on these files
+PROCESSDIR=`mktemp -d`
 cd $PROCESSDIR
 
 # copy them all into one gene list file
 echo -n "Copying to the one list ..."
 FULLLISTALLCOLUMNS=`mktemp -p $PROCESSDIR`
-cat * | sort > $FULLLISTALLCOLUMNS
+cat $REPODIR/cust???/cust*txt > $FULLLISTALLCOLUMNS
 echo "Done."
 
 # pick the HGNC_ID and database column
-echo -n "Picking HGNC_ID and Database column ..."
+echo -n "Picking HGNC_ID, EnsEMBL Gene ID and Database column ..."
 FULLLIST=`mktemp -p $PROCESSDIR`
-cut -f4,21 $FULLLISTALLCOLUMNS > $FULLLIST
+cut -f4,18,21 $FULLLISTALLCOLUMNS > $FULLLIST
+echo "Done."
+
+# sort the list so we can merge duplicates in next step
+# Also: remove all the headers from the files with sed :)
+echo -n "Sorting ..."
+FULLLISTSORTED=`mktemp -p $PROCESSDIR`
+sort $FULLLIST | sed '/HGNC_ID/d' > $FULLLISTSORTED
 echo "Done."
 
 # merge duplicated entries
 echo -n "Merging duplicated entries ..."
 PREVSYMBOL=''
-DATABASES=()
+DATABASES=''
+ENSIDS=() # hold on to all EnsEMBL IDs
 TMPFILE=`mktemp -p $PROCESSDIR`
 while read LINE; do
     IFS=$'\t' read -a LINE <<< "$LINE"
     if [[ "${LINE[0]}" == "$PREVSYMBOL" ]]; then
-        IFS=$',' read -a CUR_DATABASES <<< ${LINE[1]}
-        for DATABASE in ${CUR_DATABASES[*]}; do
-            if [[ "$DATABASE" != "FullList" ]]; then
-                DATABASES+=($DATABASE)
-            fi
-        done
+        DATABASES+=','${LINE[2]}
     else
         if [[ -n $PREVSYMBOL ]]; then
-            CUR_DATABASES=${DATABASES[*]} | sort -u
-            DATABASES+=($FULLLISTNAME)
-            DATABASE=$(IFS=,; echo "${DATABASES[*]}")
-            echo "$PREVSYMBOL	$DATABASE" >> $TMPFILE
+            ENSIDS=( $( uniqify "${ENSIDS[*]}" ) )
+            for ENSID in ${ENSIDS[@]}; do
+                DATABASES+=','$FULLLISTNAME
+                IFS=$',' read -a DATABASES_SPLIT <<< $DATABASES
+                DATABASES_SPLIT=($( uniqify "${DATABASES_SPLIT[*]}" ))
+                DATABASE=$(IFS=,; echo "${DATABASES_SPLIT[*]}")
+                echo "$PREVSYMBOL	$ENSID	$DATABASE" >> $TMPFILE
+            done
         fi
-        DATABASES=(${LINE[1]})
+        DATABASES=''
+        ENSIDS=()
     fi
-    PREVSYMBOL=${LINE[0]}
-done < $FULLLIST
-DATABASES+=($FULLLISTNAME)
-DATABASE=$(IFS=,; echo "${DATABASES[*]}")
-echo "$PREVSYMBOL	$DATABASE" >> $TMPFILE
+    PREVSYMBOL=$(echo ${LINE[0]} | sed -e 's/^ *$//' -e 's/ *$//') # arg .. trim!
+    ENSIDS+=(${LINE[1]})
+    DATABASES+=','${LINE[2]} # adds DBs again if the HGNC_ID == $PREVSYMBOL; gets uniq'ed out later on
+done < $FULLLISTSORTED
+
+ENSIDS=( $( uniqify "${ENSIDS[*]}" ) )
+for ENSID in ${ENSIDS[@]}; do
+    DATABASES+=','$FULLLISTNAME
+    IFS=$',' read -a DATABASES_SPLIT <<< $DATABASES
+    DATABASES_SPLIT=($( uniqify "${DATABASES_SPLIT[*]}" ))
+    DATABASE=$(IFS=,; echo "${DATABASES_SPLIT[*]}")
+    echo "$PREVSYMBOL	$ENSID	$DATABASE" >> $TMPFILE
+done
 
 mv $TMPFILE $REPODIR/$OUTPUTFILE
 echo "Done."
@@ -80,7 +92,7 @@ echo "Done."
 # add the right headers
 echo -n "Adding the headers ..."
 TMPFILE=`mktemp -p $PROCESSDIR`
-echo "HGNC_ID	Database" | cat - $REPODIR/$OUTPUTFILE > $TMPFILE && mv $TMPFILE $REPODIR/$OUTPUTFILE
+echo "HGNC_ID	Ensembl_gene_id	Database" | cat - $REPODIR/$OUTPUTFILE > $TMPFILE && mv $TMPFILE $REPODIR/$OUTPUTFILE
 echo "Done."
 
 # cleanup
