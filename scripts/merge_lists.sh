@@ -72,7 +72,7 @@ while read LINE; do
         DATABASES=''
         ENSIDS=()
     fi
-    PREVSYMBOL=$(echo ${LINE[0]} | sed -e 's/^ *$//' -e 's/ *$//') # arg .. trim!
+    PREVSYMBOL=$(echo ${LINE[0]} | sed -e 's/^ *//' -e 's/ *$//') # arg .. trim!
     ENSIDS+=(${LINE[1]})
     DATABASES+=','${LINE[2]} # adds DBs again if the HGNC_ID == $PREVSYMBOL; gets uniq'ed out later on
 done < $FULLLISTSORTED
