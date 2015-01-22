@@ -92,7 +92,7 @@ echo "Done."
 # add the right headers
 echo -n "Adding the headers ..."
 TMPFILE=`mktemp -p $PROCESSDIR`
-echo "HGNC_ID	Ensembl_gene_id	Database" | cat - $REPODIR/$OUTPUTFILE > $TMPFILE && mv $TMPFILE $REPODIR/$OUTPUTFILE
+echo "HGNC_ID	Ensembl_gene_id	Clinical_db_gene_annotation" | cat - $REPODIR/$OUTPUTFILE > $TMPFILE && mv $TMPFILE $REPODIR/$OUTPUTFILE
 echo "Done."
 
 # cleanup

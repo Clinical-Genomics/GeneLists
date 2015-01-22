@@ -11,7 +11,7 @@ from time import sleep
 from omim import OMIM
 from urllib.request import urlretrieve, Request, urlopen
 
-gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_ID', 'Disease_group_pathway', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Genetic_model', 'OMIM_gene', 'OMIM_morbid', 'Gene_locus', 'Genome_build', 'UniPort_ID', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Red_pen', 'Database']
+gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_ID', 'Disease_group_pathway', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Genetic_disease_model', 'OMIM_gene', 'OMIM_morbid', 'Gene_locus', 'Clinical_db_genome_build', 'UniPort_ID', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Reduced_penetrance', 'Clinical_db_gene_annotation']
 
 # EnsEMBL connection
 # TODO make this prettier
@@ -62,7 +62,7 @@ def p(line, end=os.linesep):
         pass
     """
     if verbose:
-        print(line, end=end)
+        print('\033[93m', '>>> ', line, '\033[0m', end=end)
 
 def resolve_ensembl_id(hgnc_id):
     """Query genenames.org for the EnsEMBL gene id based on the HGNC symbol.
@@ -423,7 +423,11 @@ def query_omim(data):
                 models = models.difference(TERMS_BLACKLIST)
 
             terms = (TERMS_MAPPER.get(model_human, model_human) for model_human in models)
-            line['Genetic_model'] = ','.join(terms)
+            line['Genetic_disease_model'] = ','.join(terms)
+
+            if line.get('Disease_trivial_name') is None:
+                line['Disease_group_pathway'] = phenotype.get('phenotype') 
+
             sleep(0.25) # wait for 250ms as according to OMIM specs
         yield line
 

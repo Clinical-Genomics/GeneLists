@@ -164,3 +164,7 @@ class OMIM(object):
 
     # send request
     return requests.get(url, params=params)
+
+if __name__ == '__main__':
+    omim = OMIM(api_key='<fill in key>')
+    print(omim.gene('AP1S1'))
