@@ -4,7 +4,25 @@
 from __future__ import print_function
 import sys
 import argparse
-import itertools
+import subprocess
+import os
+
+def getgittag(filename):
+    """Gets the current version of a gene list
+
+    Args:
+        filename (str): the name of the gene list
+
+    Returns (str): a version (tag) of the gene list
+
+    """
+    cwd = os.getcwd()
+    os.chdir(os.path.dirname(filename))
+    tag = subprocess.check_output(['git', 'describe']).decode('utf-8').strip()
+    os.chdir(cwd)
+
+    return tag
+
 
 def main(argv):
     parser = argparse.ArgumentParser(description='Merge gene lists. Will only output HGNC_ID, EnsEMBL_gene_id and Database columns.')
@@ -16,33 +34,43 @@ def main(argv):
     if len(args.database):
         databases = [ db[0] for db in args.database ]
 
-    lines = []
+    versions = {} # Filename => { Database => Version }
+    data = {} # HGNC_ID => {'HGNC_ID' => '', 'EnsEMBLid' => [], 'Databases' => () }
     for infile in args.infiles:
-        lines.append(( line for line in infile )) # sluuuurp ... as iterators
+        versions[infile.name] = {}
+        for line in infile:
+            if line.startswith('#'): continue
+            line = line.split("\t")
+            hgnc_id = line[3].strip()
+            ensEMBLid = line[17].strip()
+            line_databases = line[20].strip().split(',')
 
-    data = { } # HGNC_ID => {'HGNC_ID' => '', 'EnsEMBLid' => [], 'Databases' => () }
-    for line in itertools.chain(*lines):
-        line = line.split("\t")
-        hgnc_id = line[3].strip()
-        ensEMBLid = line[17].strip()
-        line_databases = line[20].strip().split(',')
+            # skip if we are whitelisting dbs
+            if len(databases):
+                set_databases = set(line_databases).intersection(databases)
+                if len(set_databases):
+                    line_databases = list(set_databases)
+                else:
+                    continue
 
-        # skip if we are whitelisting dbs
-        if len(databases):
-            set_databases = set(line_databases).intersection(databases)
-            if len(set_databases):
-                line_databases = list(set_databases)
-            else:
-                continue
+            # init
+            if hgnc_id not in data:
+                data[hgnc_id] = {'HGNC_ID': '', 'EnsEMBLid': [], 'Databases': [] }
 
-        # init
-        if hgnc_id not in data:
-            data[hgnc_id] = {'HGNC_ID': '', 'EnsEMBLid': [], 'Databases': [] }
+            # fill
+            data[hgnc_id]['HGNC_ID'] = hgnc_id
+            data[hgnc_id]['EnsEMBLid'].append(ensEMBLid)
+            data[hgnc_id]['Databases'] += line_databases
 
-        # fill
-        data[hgnc_id]['HGNC_ID'] = hgnc_id
-        data[hgnc_id]['EnsEMBLid'].append(ensEMBLid)
-        data[hgnc_id]['Databases'] += line_databases
+            # fill versions dict
+            for database in line_databases:
+                if database not in versions[infile.name]:
+                    version = getgittag(infile.name)
+                    versions[infile.name][database] = getgittag(infile.name)
+
+    for filename, database_version in versions.items():
+        for database, version in database_version.items():
+            print('##Database=<ID=%s,Version=%s,Acronym=%s' % (os.path.basename(filename), version, database))
 
     print('HGNC_ID	Ensembl_gene_id	Clinical_db_gene_annotation')
     for line in data.values():
