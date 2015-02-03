@@ -142,6 +142,7 @@ def query(data, try_hgnc_again=False):
             conds = [ "%s = %%s" % keys_conds[ key ] for key in keys if key in line and line[key] != None ]
             cond_values = [ line[ key ] for key in keys if key in line ]
 
+            # check on length of the region name to exclude scaffolds and patches
             query = "%s where length(seq_region.name) < 3 and %s" % ( base_query, " and ".join(conds) )
             cur.execute(query, cond_values)
 
@@ -150,7 +151,7 @@ def query(data, try_hgnc_again=False):
             if len(rs) == 0:
                 if HGNC_ID_i == len(HGNC_IDs):
                     not_found_id = HGNC_ID if len(HGNC_IDs) == 1 else HGNC_IDs
-                    p("Not found: %s %s" % (not_found_id, conds))
+                    p("Not found: %s %s" % (not_found_id, cond_values))
                 if not try_hgnc_again: break
             elif len(rs) > 1:
                 if HGNC_ID_i > 1:
@@ -355,6 +356,21 @@ def add_mim2gene_alias(data):
         line['HGNC_ID'] = ','.join(HGNC_IDs)
         yield line
 
+def add_genome_build(data, genome_build):
+    """Fills in the genome release version in the Clinical_db_genome_build column
+
+    Args:
+        data (list of dicts): Inner dict represents a row in a gene list
+        genome_build (str): The genome build, e.g. GRCh37
+
+    Yields:
+        dict: with the filled in genome build in the Clinical_db_genome_build column
+
+    """
+    for line in data:
+        line['Clinical_db_genome_build'] = genome_build
+        yield line
+
 def remove_non_genes(data):
     """Based on mim2gene.txt, you can remove all non genes. The global type_of dict provides the type of the hgnc symbol.
 
@@ -440,6 +456,7 @@ def main(argv):
     parser.add_argument('--errors-only', default=False, action='store_true', dest='errors_only', help='if set, will not output the gene list, but only the conflict messages from EnsEMBLdb.')
     parser.add_argument('--download-mim2gene', default=False, action='store_true', dest='download_mim2gene', help='if set, will download a new version of the mim2gene.txt file, used to check the OMIM type')
     parser.add_argument('--mim2gene', default=False, action='store_true', dest='mim2gene', help='if set, will try to resolve an HGNC symbol with the help of mim2gene.txt')
+    parser.add_argument('--genome-build', default=None, dest='genome_build', help='Sets the genome release version, e.g. GRCh37')
     args = parser.parse_args(argv)
 
     global verbose
@@ -470,19 +487,32 @@ def main(argv):
     raw_data = ( line.strip() for line in tsvfile ) # sluuuurp
     parsable_data = ( line.split("\t") for line in raw_data )
 
+    # skip parsing of leading comments
+    comments = []
+    line = next(parsable_data)
+    while line[0].startswith('##'):
+        comments.append(line)
+        line = next(parsable_data)
+
     # list to dict
-    header = next(parsable_data) # get the header
+    header = line # get the header
     dict_data = list2dict(header, parsable_data)
 
     # clean up the input
     clean_data = cleanup(dict_data)
 
+    # add genome build, if any
+    if args.genome_build is not None:
+        genome_data = add_genome_build(clean_data, args.genome_build)
+    else:
+        genome_data = clean_data
+
     fixed_data = None
     if args.zero_based:
         # fix 0-based coordinates to be 1-based
-        fixed_data = zero2one(clean_data)
+        fixed_data = zero2one(genome_data)
     else:
-        fixed_data = clean_data 
+        fixed_data = genome_data
 
     # add the mim2gene alias to HGNC_ID
     # remove non-genes based on mim2gene.txt
@@ -510,6 +540,8 @@ def main(argv):
     cleaner_data = cleanup(munged_data)
 
     # print the gene list
+    for comment in comments:
+        print('\t'.join(comment))
     print_header()
     for line in cleaner_data:
         print_line(line)
