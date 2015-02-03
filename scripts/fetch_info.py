@@ -11,7 +11,7 @@ from time import sleep
 from omim import OMIM
 from urllib.request import urlretrieve, Request, urlopen
 
-gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_ID', 'Disease_group_pathway', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Genetic_disease_model', 'OMIM_gene', 'OMIM_morbid', 'Gene_locus', 'Clinical_db_genome_build', 'UniPort_ID', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Reduced_penetrance', 'Clinical_db_gene_annotation']
+gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_ID', 'Disease_group_pathway', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Genetic_disease_model', 'OMIM_gene', 'OMIM_morbid', 'Gene_locus', 'Clinical_db_genome_build', 'UniProt_id', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Reduced_penetrance', 'Clinical_db_gene_annotation', 'Disease_associated_transcript']
 
 # EnsEMBL connection
 # TODO make this prettier
@@ -150,10 +150,7 @@ def query(data, try_hgnc_again=False):
             if len(rs) == 0:
                 if HGNC_ID_i == len(HGNC_IDs):
                     not_found_id = HGNC_ID if len(HGNC_IDs) == 1 else HGNC_IDs
-                    if 'Chromosome' in line:
-                        p("Not found: %s, chromosome: %s" % (not_found_id, line['Chromosome']))
-                    else:
-                        p("Not found: %s" % not_found_id)
+                    p("Not found: %s %s" % (not_found_id, conds))
                 if not try_hgnc_again: break
             elif len(rs) > 1:
                 if HGNC_ID_i > 1:
@@ -304,7 +301,10 @@ def cleanup(data):
 
     """
     for line in data:
-        yield [ re.sub(r'\s*[,;]\s*', ',', column.strip()) for column in line ]
+        for key, value in line.items():
+            if isinstance(value, str):
+                line[key] = re.sub(r'\s*[,;]\s*', ',', value.strip())
+        yield line
 
 def list2dict(header, data):
     """Will convert each row in the data from a list to dict using the header list as keys.
@@ -422,11 +422,11 @@ def query_omim(data):
                 models.update([model.strip('? ') for model in phenotype['inheritance'].split(';')])
                 models = models.difference(TERMS_BLACKLIST)
 
+                if line.get('Disease_trivial_name') is None:
+                    line['Disease_group_pathway'] = phenotype.get('phenotype') 
+
             terms = (TERMS_MAPPER.get(model_human, model_human) for model_human in models)
             line['Genetic_disease_model'] = ','.join(terms)
-
-            if line.get('Disease_trivial_name') is None:
-                line['Disease_group_pathway'] = phenotype.get('phenotype') 
 
             sleep(0.25) # wait for 250ms as according to OMIM specs
         yield line
@@ -470,19 +470,19 @@ def main(argv):
     raw_data = ( line.strip() for line in tsvfile ) # sluuuurp
     parsable_data = ( line.split("\t") for line in raw_data )
 
-    # clean up the input
-    clean_data = cleanup(parsable_data)
-
     # list to dict
-    header = next(clean_data) # get the header
-    dict_data = list2dict(header, clean_data)
+    header = next(parsable_data) # get the header
+    dict_data = list2dict(header, parsable_data)
+
+    # clean up the input
+    clean_data = cleanup(dict_data)
 
     fixed_data = None
     if args.zero_based:
         # fix 0-based coordinates to be 1-based
-        fixed_data = zero2one(dict_data)
+        fixed_data = zero2one(clean_data)
     else:
-        fixed_data = dict_data
+        fixed_data = clean_data 
 
     # add the mim2gene alias to HGNC_ID
     # remove non-genes based on mim2gene.txt
@@ -506,9 +506,12 @@ def main(argv):
     # clean up the data from EnsEMBL a bit
     munged_data = munge(completed_data)
 
+    # at last, clean up the output
+    cleaner_data = cleanup(munged_data)
+
     # print the gene list
     print_header()
-    for line in munged_data:
+    for line in cleaner_data:
         print_line(line)
 
 if __name__ == '__main__':

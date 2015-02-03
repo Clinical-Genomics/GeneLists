@@ -44,6 +44,7 @@ def main(argv):
         data[hgnc_id]['EnsEMBLid'].append(ensEMBLid)
         data[hgnc_id]['Databases'] += line_databases
 
+    print('HGNC_ID	Ensembl_gene_id	Clinical_db_gene_annotation')
     for line in data.values():
         line['Databases'].append('FullList')
         line_dbs = ','.join(list(set(line['Databases'])))
