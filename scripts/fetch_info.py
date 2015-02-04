@@ -443,11 +443,12 @@ def query_omim(data):
                 if len(models) == 0: continue # no valid models found!
 
                 models = set([TERMS_MAPPER.get(model_human, model_human) for model_human in models.difference(TERMS_BLACKLIST)]) # rename them if possible
-
                 phenotypic_disease_model.append('%s>%s' % (phenotype['phenotype_mim_number'], '/'.join(models)))
 
             if len(phenotypic_disease_model) > 0:
                 line['Phenotypic_disease_model'] = '%s:%s' % (line['HGNC_ID'], '|'.join(phenotypic_disease_model))
+
+            line['OMIM_morbid'] = entry['mim_number']
 
             sleep(0.25) # wait for 250ms as according to OMIM specs
         yield line
