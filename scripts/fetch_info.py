@@ -431,18 +431,19 @@ def query_omim(data):
     for line in data:
         if 'HGNC_ID' in line:
             entry = omim.gene(line['HGNC_ID'])
-            #models = set(phenotype['inheritance'] for phenotype in entry['phenotypes'] if phenotype['inheritance'] is not None)
+
+            genetic_disease_model = []
             models = set()
             for phenotype in entry['phenotypes']:
                 if phenotype['inheritance'] is None: continue
+
                 models.update([model.strip('? ') for model in phenotype['inheritance'].split(';')])
-                models = models.difference(TERMS_BLACKLIST)
+                models = models.difference(TERMS_BLACKLIST) # remove blacklisted terms
+                models = set([TERMS_MAPPER.get(model_human, model_human) for model_human in models.difference(TERMS_BLACKLIST)]) # rename them if possible
 
-                if line.get('Disease_trivial_name') is None:
-                    line['Disease_group_pathway'] = phenotype.get('phenotype') 
+                genetic_disease_model.append('%s>%s' % (phenotype['phenotype_mim_number'], '/'.join(models)))
 
-            terms = (TERMS_MAPPER.get(model_human, model_human) for model_human in models)
-            line['Genetic_disease_model'] = ','.join(terms)
+            line['Genetic_disease_model'] = line['HGNC_ID'] + '|'.join(genetic_disease_model)
 
             sleep(0.25) # wait for 250ms as according to OMIM specs
         yield line

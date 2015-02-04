@@ -21,6 +21,7 @@ def format_entry(json_entry):
   phenotypes_raw = (item['phenotypeMap']
                     for item in gene_map.get('phenotypeMapList', []))
   phenotypes = [{
+    'phenotype_mim_number': phenotype.get('phenotypeMimNumber'),
     'mim_number': phenotype.get('mimNumber'),
     'phenotype': phenotype.get('phenotype'),
     'mapping_key': phenotype.get('phenotypeMappingKey'),
