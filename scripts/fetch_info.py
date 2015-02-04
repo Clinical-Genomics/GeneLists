@@ -259,15 +259,15 @@ def merge_line(ens, client):
     return merged
 
 def fill(data):
-    """Fills in the blanks with '#NA'
+    """Removes #NA's
 
     Args:
         data (list of dicts): representing the lines and columns in a gene list
     Yields:
-        dict: with all missing columns filled in with #NA
+        dict: with all missing columns filled in with ''
 
     """
-    defaults=dict((column_name, '#NA') for column_name in gl_header)
+    defaults=dict((column_name, '') for column_name in gl_header)
     for line in data:
         d = defaults.copy()
         d.update(line)
