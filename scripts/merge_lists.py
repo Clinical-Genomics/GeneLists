@@ -70,7 +70,7 @@ def main(argv):
 
     for filename, database_version in versions.items():
         for database, version in database_version.items():
-            print('##Database=<ID=%s,Version=%s,Acronym=%s' % (os.path.basename(filename), version, database))
+            print('##Database=<ID=%s,Version=%s,Acronym=%s,Clinical_db_genome_build=GRCh37.p13' % (os.path.basename(filename), version, database))
 
     print('HGNC_ID	Ensembl_gene_id	Clinical_db_gene_annotation')
     for line in data.values():
