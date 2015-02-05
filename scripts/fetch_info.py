@@ -448,7 +448,7 @@ def query_omim(data):
             if len(phenotypic_disease_model) > 0:
                 line['Phenotypic_disease_model'] = '%s:%s' % (line['HGNC_ID'], '|'.join(phenotypic_disease_model))
 
-            line['OMIM_morbid'] = entry['mim_number']
+            line['OMIM_morbid'] = '%s:%s' % (line['HGNC_ID'], entry['mim_number'])
 
             sleep(0.25) # wait for 250ms as according to OMIM specs
         yield line
