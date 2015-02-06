@@ -304,7 +304,10 @@ def cleanup(data):
     for line in data:
         for key, value in line.items():
             if isinstance(value, str):
-                line[key] = re.sub(r'\s*[,;]\s*', ',', value.strip())
+                if line[key] == '#NA':
+                    line[key] = ''
+                else:
+                    line[key] = re.sub(r'\s*[,;]\s*', ',', value.strip())
         yield line
 
 def list2dict(header, data):
@@ -369,6 +372,21 @@ def add_genome_build(data, genome_build):
     """
     for line in data:
         line['Clinical_db_genome_build'] = genome_build
+        yield line
+
+def redpen2symbol(data):
+    """If reduced penetrance is set, replace it with the HGNC symbol
+
+    Args:
+        data (list of dicts): Inner dict represents a row in a gene list
+
+    Yields:
+        dict: with the replaced red pen to HGNC symbol
+
+    """
+    for line in data:
+        if 'Reduced_penetrance' in line and line['Reduced_penetrance'] == 'Yes':
+            line['Reduced_penetrance'] = line['HGNC_ID']
         yield line
 
 def remove_non_genes(data):
@@ -536,8 +554,11 @@ def main(argv):
     # fill in the inheritance models
     omim_data = query_omim(ensembld_data)
 
-    # fill in missing values with #NA
-    completed_data = fill(omim_data)
+    # do some replacements
+    redpen_data = redpen2symbol(omim_data)
+
+    # fill in missing values with ''
+    completed_data = fill(redpen_data)
 
     # clean up the data from EnsEMBL a bit
     munged_data = munge(completed_data)

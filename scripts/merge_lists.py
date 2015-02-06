@@ -43,7 +43,11 @@ def main(argv):
             line = line.split("\t")
             hgnc_id = line[3].strip()
             ensEMBLid = line[17].strip()
+            red_pen = line[19].strip()
             line_databases = line[20].strip().split(',')
+            dis_ass_trans = ''
+            if len(line) == 22:
+                dis_ass_trans = line[21].strip()
 
             # skip if we are whitelisting dbs
             if len(databases):
@@ -55,12 +59,14 @@ def main(argv):
 
             # init
             if hgnc_id not in data:
-                data[hgnc_id] = {'HGNC_ID': '', 'EnsEMBLid': [], 'Databases': [] }
+                data[hgnc_id] = {'HGNC_ID': '', 'EnsEMBLid': [], 'Databases': [], 'red_pen': '', 'dis_ass_trans': '' }
 
             # fill
             data[hgnc_id]['HGNC_ID'] = hgnc_id
             data[hgnc_id]['EnsEMBLid'].append(ensEMBLid)
             data[hgnc_id]['Databases'] += line_databases
+            data[hgnc_id]['red_pen'] = red_pen
+            data[hgnc_id]['dis_ass_trans'] = dis_ass_trans
 
             # fill versions dict
             for database in line_databases:
@@ -72,12 +78,16 @@ def main(argv):
         for database, version in database_version.items():
             print('##Database=<ID=%s,Version=%s,Acronym=%s,Clinical_db_genome_build=GRCh37.p13' % (os.path.basename(filename), version, database))
 
-    print('HGNC_ID	Ensembl_gene_id	Clinical_db_gene_annotation')
+    print('HGNC_ID	Ensembl_gene_id	Clinical_db_gene_annotation	Reduced_penetrance	Disease_associated_transcript')
     for line in data.values():
         line['Databases'].append('FullList')
         line_dbs = ','.join(list(set(line['Databases'])))
+        if line['dis_ass_trans'] and line['dis_ass_trans'] != '#NA':
+            dis_ass_trans = '%s:%s|' % (line['HGNC_ID'], line['dis_ass_trans'])
+        else:
+            dis_ass_trans = line['dis_ass_trans']
         for ensEMBLid in set(line['EnsEMBLid']):
-            print('%s\t%s\t%s' % (line['HGNC_ID'], ensEMBLid, line_dbs))
+            print('%s\t%s\t%s\t%s\t%s' % (line['HGNC_ID'], ensEMBLid, line_dbs, line['red_pen'], dis_ass_trans))
 
 if __name__ == '__main__':
     main(sys.argv[1:])
