@@ -466,6 +466,8 @@ def query_omim(data):
             if len(phenotypic_disease_model) > 0:
                 line['Phenotypic_disease_model'] = '%s:%s' % (line['HGNC_ID'], '|'.join(phenotypic_disease_model))
 
+            if 'OMIM_morbid' in line and len(line['OMIM_morbid']) > 0 and line['OMIM_morbid'] != entry['mim_number']:
+                p('%s > %s client OMIM number differs from OMIM query')
             line['OMIM_morbid'] = '%s:%s' % (line['HGNC_ID'], entry['mim_number'])
 
             sleep(0.25) # wait for 250ms as according to OMIM specs
