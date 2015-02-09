@@ -16,12 +16,17 @@ cleanup() {
 }
 trap cleanup EXIT
 
+uniqify() {
+    echo "$1" | tr ' ' '\n' | sort -u | tr '\n' ' '
+}
+
 REPODIR=$1
 OUTPUTFILE=${2-cust002-ATX.txt}
 FULLLISTNAME=${3-'FullList'} # combine multiple gene lists into one big list with this name
+GENOMEBUILD=${4-'GRCh37.p13'} # default column
 
 # gene lists we need to process
-declare -A FILES=( [Ataxia_AutRec_MP_DN.txt]=ATXAR [ataxia_list_MP.txt]=ATX [other_dominant_ataxia_genelist_MP_DN.txt]=ATXDOM [SCA_genelist_MP_DN.txt]=SCA [SpasticParaplegia_genelist_MP_DN.txt]=SP [spastic_paraplegia_related_140911_MP_DN.txt]=SPREL )
+declare -A FILES=( [neutropenia_DN.txt]=SCN [SpasticParaplegia_genelist_MP_DN.txt]=AD-HSP,SPG,Ataxi [Ataxia_AutRec_MP_DN.txt]=Ataxi [ataxia_list_MP.txt]=Ataxi [other_dominant_ataxia_genelist_MP_DN.txt]=Ataxi [SCA_genelist_MP_DN.txt]=Ataxi [spastic_paraplegia_related_140911_MP_DN.txt]=SPG,Ataxi)
 
 echo -n "Checking if files exist ..."
 for f in ${!FILES[@]}; do
@@ -72,20 +77,23 @@ TMPFILE=`mktemp`
 while read LINE; do
     IFS=$'\t' read -a LINE <<< "$LINE"
     if [[ "${LINE[0]}" == "$PREVSYMBOL" ]]; then
-        DATABASES+=(${LINE[1]})
+        IFS=',' read -a DBS <<< ${LINE[1]}
+        DATABASES=( "${DATABASES[*]}" "${DBS[*]}" )
     else
         if [[ -n $PREVSYMBOL ]]; then
             DATABASES+=($FULLLISTNAME)
+            DATABASES=($( uniqify "${DATABASES[*]}" ))
             DATABASE=$(IFS=,; echo "${DATABASES[*]}")
-            echo "$PREVSYMBOL	$DATABASE" >> $TMPFILE
+            echo "$PREVSYMBOL	$GENOMEBUILD	$DATABASE" >> $TMPFILE
         fi
-        DATABASES=(${LINE[1]})
+        IFS=',' read -a DATABASES <<< ${LINE[1]}
     fi
     PREVSYMBOL=${LINE[0]}
 done < $REPODIR/$OUTPUTFILE
 DATABASES+=($FULLLISTNAME)
+DATABASES=($( uniqify "${DATABASES[*]}" ))
 DATABASE=$(IFS=,; echo "${DATABASES[*]}")
-echo "$PREVSYMBOL	$DATABASE" >> $TMPFILE
+echo "$PREVSYMBOL	$GENOMEBUILD	$DATABASE" >> $TMPFILE
 
 mv $TMPFILE $REPODIR/$OUTPUTFILE
 echo "Done."
@@ -93,7 +101,7 @@ echo "Done."
 # add the right headers
 echo -n "Adding the headers ..."
 TMPFILE=`mktemp`
-echo "HGNC_ID	Database" | cat - $REPODIR/$OUTPUTFILE > $TMPFILE && mv $TMPFILE $REPODIR/$OUTPUTFILE
+echo "HGNC_ID	Clinical_db_genome_build	Clinical_db_gene_annotation" | cat - $REPODIR/$OUTPUTFILE > $TMPFILE && mv $TMPFILE $REPODIR/$OUTPUTFILE
 echo "Done."
 
 # cleanup
