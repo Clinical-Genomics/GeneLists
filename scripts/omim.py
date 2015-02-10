@@ -108,7 +108,10 @@ class OMIM(object):
         import time
         time.sleep(sleep)
         res = requests.get(url, params=params)
-        sleep *= 2
+        if sleep > 1000:
+            sleep = 1
+        else:
+            sleep *= 2
 
     data = res.json()
 
