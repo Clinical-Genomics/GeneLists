@@ -304,7 +304,10 @@ def cleanup(data):
     for line in data:
         for key, value in line.items():
             if isinstance(value, str):
-                line[key] = re.sub(r'\s*[,;]\s*', ',', value.strip())
+                if line[key] == '#NA':
+                    line[key] = ''
+                else:
+                    line[key] = re.sub(r'\s*[,;]\s*', ',', value.strip())
         yield line
 
 def list2dict(header, data):
