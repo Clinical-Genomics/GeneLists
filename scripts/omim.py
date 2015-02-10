@@ -34,7 +34,8 @@ def format_entry(json_entry):
     'other_entities': other_entities,
     'gene_symbol': gene_map.get('geneSymbols'),
     'gene_name': gene_map.get('geneName'),
-    'phenotypes': phenotypes
+    'gene_location': gene_map.get('computedCytoLocation'),
+    'phenotypes': phenotypes,
   }
 
   if 'epochCreated' in json_entry:
