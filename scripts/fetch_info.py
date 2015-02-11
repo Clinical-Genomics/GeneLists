@@ -467,14 +467,16 @@ def query_omim(data):
                 line['Phenotypic_disease_model'] = '%s:%s' % (line['HGNC_ID'], '|'.join(phenotypic_disease_model))
 
             # add OMIM morbid
-            if 'OMIM_morbid' in line and len(line['OMIM_morbid']) > 0 and line['OMIM_morbid'] != entry['mim_number']:
-                p('%s > %s client OMIM number differs from OMIM query' % (line['OMIM_morbid'], entry['mim_number']))
-            line['OMIM_morbid'] = '%s:%s' % (line['HGNC_ID'], entry['mim_number'])
+            if entry['mim_number'] is not None:
+                if 'OMIM_morbid' in line and len(line['OMIM_morbid']) > 0 and line['OMIM_morbid'] != entry['mim_number']:
+                    p('%s > %s client OMIM number differs from OMIM query' % (line['OMIM_morbid'], entry['mim_number']))
+                line['OMIM_morbid'] = '%s:%s' % (line['HGNC_ID'], entry['mim_number'])
 
             # add Gene_locus
-            if 'Gene_locus' in line and len(line['Gene_locus']) > 0 and line['Gene_locus'] != entry['gene_location']:
-                p('%s > %s client Gene locus differs from OMIM query' % (line['Gene_locus'], entry['gene_location']))
-            line['Gene_locus'] = entry['gene_location']
+            if entry['gene_location'] is not None:
+                if 'Gene_locus' in line and len(line['Gene_locus']) > 0 and line['Gene_locus'] != entry['gene_location']:
+                    p('%s > %s client Gene locus differs from OMIM query' % (line['Gene_locus'], entry['gene_location']))
+                line['Gene_locus'] = entry['gene_location']
 
             sleep(0.25) # wait for 250ms as according to OMIM specs
         yield line
