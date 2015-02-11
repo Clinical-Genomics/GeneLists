@@ -453,15 +453,15 @@ def query_omim(data):
             phenotypic_disease_model = []
             models = set()
             for phenotype in entry['phenotypes']:
-                if phenotype['inheritance'] is None: continue
+                if phenotype['inheritance'] is not None:
+                    models.update([model.strip('? ') for model in phenotype['inheritance'].split(';')])
+                    models = models.difference(TERMS_BLACKLIST) # remove blacklisted terms
+                    models = set([TERMS_MAPPER.get(model_human, model_human) for model_human in models]) # rename them if possible
 
-                models.update([model.strip('? ') for model in phenotype['inheritance'].split(';')])
-                models = models.difference(TERMS_BLACKLIST) # remove blacklisted terms
-
-                if len(models) == 0: continue # no valid models found!
-
-                models = set([TERMS_MAPPER.get(model_human, model_human) for model_human in models.difference(TERMS_BLACKLIST)]) # rename them if possible
-                phenotypic_disease_model.append('%s>%s' % (phenotype['phenotype_mim_number'], '/'.join(models)))
+                    phenotypic_disease_model.append('%s>%s' % (phenotype['phenotype_mim_number'], '/'.join(models)))
+                else:
+                    if (phenotype['phenotype_mim_number'] is not None):
+                        phenotypic_disease_model.append(str(phenotype['phenotype_mim_number']))
 
             if len(phenotypic_disease_model) > 0:
                 line['Phenotypic_disease_model'] = '%s:%s' % (line['HGNC_ID'], '|'.join(phenotypic_disease_model))
