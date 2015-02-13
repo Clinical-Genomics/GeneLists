@@ -16,7 +16,7 @@ for dir in `ls $1`; do
         lists=(`ls ${1}/${dir}/*txt`)
         for list in ${dir}/${lists[@]}; do
             list=`basename "$list"`
-            list=`echo ${list} | sed 's/.*-\(.*\).txt/\1/'`
+            list=`echo ${list} | sed 's/cust...-\(.*\).txt/\1/'`
             echo "	$list"
         done
     fi
