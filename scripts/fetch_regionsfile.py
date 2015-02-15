@@ -66,12 +66,12 @@ def query():
                 Gene_start, Gene_stop = Gene_stop, Gene_start
 
             line = '%s\t%d\t%d\t%s\t%s\t' % (row['Chromosome'], Gene_start, Gene_stop, row['Ensembl_ID'], row['HGNC_ID'])
+            prev_description = row['description']
 
         if row['RefSeq_ID'] == None:
             p('%s:%s has no RefSeqID' % (Ensembl_ID, row['Transcript_ID']))
 
         transcripts.append('%s>%s' % (row['Transcript_ID'], row['RefSeq_ID']))
-        prev_description = row['description']
 
     # print last one
     line += '|'.join(transcripts)
