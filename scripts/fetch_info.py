@@ -11,7 +11,7 @@ from time import sleep
 from omim import OMIM
 from urllib.request import urlretrieve, Request, urlopen
 
-gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_ID', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Phenotypic_disease_model', 'OMIM_morbid', 'Gene_locus', 'UniProt_id', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Reduced_penetrance', 'Clinical_db_gene_annotation', 'Disease_associated_transcript']
+gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_symbol', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Phenotypic_disease_model', 'OMIM_morbid', 'Gene_locus', 'UniProt_id', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Reduced_penetrance', 'Clinical_db_gene_annotation', 'Disease_associated_transcript']
 
 # EnsEMBL connection
 # TODO make this prettier
@@ -118,7 +118,7 @@ def resolve_gene(omim_id):
     return False
 
 def query(data, try_hgnc_again=False):
-    """Queries EnsEMBL. Parameters are HGNC_ID and/or Ensembl_gene_id, whatever is available. Data from EnsEMBLdb will overwrite the client data.
+    """Queries EnsEMBL. Parameters are HGNC_symbol and/or Ensembl_gene_id, whatever is available. Data from EnsEMBLdb will overwrite the client data.
     A(n) identifier(s) should yield one result from EnsEMBLdb. It will be reported if a(n) identifier(s) don't yield any or multiple results.
 
     Args:
@@ -130,15 +130,15 @@ def query(data, try_hgnc_again=False):
     conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
     cur = conn.cursor(pymysql.cursors.DictCursor)
 
-    base_query = "select g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop, x.display_label AS HGNC_ID, g.stable_id AS Ensembl_gene_id, seq_region.name AS Chromosome from gene g join xref x on x.xref_id = g.display_xref_id join seq_region using (seq_region_id)"
-    keys_conds = { 'HGNC_ID': 'x.display_label', 'Ensembl_gene_id': 'g.stable_id', 'Chromosome': 'seq_region.name' }
+    base_query = "select g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop, x.display_label AS HGNC_symbol, g.stable_id AS Ensembl_gene_id, seq_region.name AS Chromosome from gene g join xref x on x.xref_id = g.display_xref_id join seq_region using (seq_region_id)"
+    keys_conds = { 'HGNC_symbol': 'x.display_label', 'Ensembl_gene_id': 'g.stable_id', 'Chromosome': 'seq_region.name' }
 
-    keys = ['HGNC_ID', 'Ensembl_gene_id', 'Chromosome'] # these columns will be put into the condition statement if they have a value
+    keys = ['HGNC_symbol', 'Ensembl_gene_id', 'Chromosome'] # these columns will be put into the condition statement if they have a value
     for line in data:
-        HGNC_IDs=line['HGNC_ID'].split(',')
-        HGNC_ID_i=1
-        for HGNC_ID in HGNC_IDs:
-            line['HGNC_ID'] = HGNC_ID # actually replace the entry
+        HGNC_symbols=line['HGNC_symbol'].split(',')
+        HGNC_symbol_i=1
+        for HGNC_symbol in HGNC_symbols:
+            line['HGNC_symbol'] = HGNC_symbol # actually replace the entry
             conds = [ "%s = %%s" % keys_conds[ key ] for key in keys if key in line and line[key] != None ]
             cond_values = [ line[ key ] for key in keys if key in line ]
 
@@ -149,17 +149,17 @@ def query(data, try_hgnc_again=False):
             rs = cur.fetchall() # result set
 
             if len(rs) == 0:
-                if HGNC_ID_i == len(HGNC_IDs):
-                    not_found_id = HGNC_ID if len(HGNC_IDs) == 1 else HGNC_IDs
+                if HGNC_symbol_i == len(HGNC_symbols):
+                    not_found_id = HGNC_symbol if len(HGNC_symbols) == 1 else HGNC_symbols
                     p("Not found: %s %s" % (not_found_id, cond_values))
                 if not try_hgnc_again: break
             elif len(rs) > 1:
-                if HGNC_ID_i > 1:
-                    p("Took %s/%s" % (HGNC_ID, HGNC_IDs))
+                if HGNC_symbol_i > 1:
+                    p("Took %s/%s" % (HGNC_symbol, HGNC_symbols))
 
                 # This happens when multiple genes are overlapping with a HGNC ID
                 # Query genenames.org to pick one EnsEMBL gene id
-#                gn_ensembl_id = resolve_ensembl_id(HGNC_ID)
+#                gn_ensembl_id = resolve_ensembl_id(HGNC_symbol)
 #                if gn_ensembl_id:
 #                    matching_lines = [ line for line in rs if line['Ensembl_gene_id'] == gn_ensembl_id ] # yields one entry
 #                    if len(matching_lines) > 0:
@@ -170,23 +170,23 @@ def query(data, try_hgnc_again=False):
 
                 # we couldn't resolve this with genenames.org
                 if 'Chromosome' in line:
-                    p("Multiple entries: %s, chromosome: %s => " % (HGNC_ID, line['Chromosome']), end='')
+                    p("Multiple entries: %s, chromosome: %s => " % (HGNC_symbol, line['Chromosome']), end='')
                 else:
-                    p("Multiple entries: %s => " % (HGNC_ID), end='')
+                    p("Multiple entries: %s => " % (HGNC_symbol), end='')
                 p("Adding: %s" % ', '.join(( entry['Ensembl_gene_id'] for entry in rs )) )
                 for entry in rs:
                     yield merge_line(entry, line)
                 break
             else:
-                if len(HGNC_IDs) > 1:
-                    p("Took %s/%s" % (HGNC_ID, HGNC_IDs))
+                if len(HGNC_symbols) > 1:
+                    p("Took %s/%s" % (HGNC_symbol, HGNC_symbols))
                 for entry in rs:
                     yield merge_line(entry, line)
                 break
-            HGNC_ID_i += 1
+            HGNC_symbol_i += 1
 
 def get_transcript(start, end, ensembl_gene_id=None, hgnc_id=None):
-    """Queries EnsEMBL. Parameters are HGNC_ID and/or Ensembl_gene_id, whatever is available. It will return one hit with the ensembl trasncript id.
+    """Queries EnsEMBL. Parameters are HGNC_symbol and/or Ensembl_gene_id, whatever is available. It will return one hit with the ensembl trasncript id.
 
     Args:
         ensembl_gene_id (str, optional): ensembl_gene_id and/or hgnc_id should be provided.
@@ -199,7 +199,7 @@ def get_transcript(start, end, ensembl_gene_id=None, hgnc_id=None):
     """
     cur = conn.cursor(pymysql.cursors.DictCursor)
 
-    base_query = "select g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop, x.display_label AS HGNC_ID, g.stable_id AS Ensembl_gene_id, seq_region.name AS Chromosome, t.seq_region_start AS Transcript_start, t.seq_region_end AS Transcript_stop, t.stable_id AS Transcript_id from gene g join xref x on x.xref_id = g.display_xref_id join seq_region using (seq_region_id) join transcript t using (gene_id)"
+    base_query = "select g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop, x.display_label AS HGNC_symbol, g.stable_id AS Ensembl_gene_id, seq_region.name AS Chromosome, t.seq_region_start AS Transcript_start, t.seq_region_end AS Transcript_stop, t.stable_id AS Transcript_id from gene g join xref x on x.xref_id = g.display_xref_id join seq_region using (seq_region_id) join transcript t using (gene_id)"
 
     conds = {'t.seq_region_start': start, 't.seq_region_end': end}
     if ensembl_gene_id != None:
@@ -246,7 +246,7 @@ def merge_line(ens, client):
     if 'Gene_start' in client and 'Gene_stop' in client:
         if str(ens['Gene_start']) != str(client['Gene_start']) or str(ens['Gene_stop']) != str(client['Gene_stop']):
             # get the transcript, compare those coordinates and report
-            transcript = get_transcript(client['Gene_start'], client['Gene_stop'], ens['Ensembl_gene_id'], ens['HGNC_ID'])
+            transcript = get_transcript(client['Gene_start'], client['Gene_stop'], ens['Ensembl_gene_id'], ens['HGNC_symbol'])
             for key in ('Gene_start', 'Gene_stop'):
                 if str(ens[key]) != str(client[key]):
                     if transcript and len(transcript) > 1:
@@ -338,7 +338,7 @@ def zero2one(data):
 
 def add_mim2gene_alias(data):
     """Looks up the most recent HGNC symbol for an HGNC alias in mim2gene.txt and
-    prepends it to the HGNC_ID column.
+    prepends it to the HGNC_symbol column.
     Normally, the most recent symbol will have more chance to have a hit in EnsEMBLdb.
     Only use this function when mim2gene switch is active
 
@@ -346,17 +346,17 @@ def add_mim2gene_alias(data):
         data (list of dicts): Inner dict represents a row in a gene list
 
     Yields:
-        dict: with the added HGNC symbol prepended to the HGNC_ID column.
+        dict: with the added HGNC symbol prepended to the HGNC_symbol column.
 
     """
     for line in data:
-        HGNC_IDs = line['HGNC_ID'].split(',')
+        HGNC_symbols = line['HGNC_symbol'].split(',')
         if 'OMIM_morbid' in line:
             OMIM_id  = line['OMIM_morbid']
             HGNC_symbol = resolve_gene(OMIM_id)
-            if HGNC_symbol != False and HGNC_symbol not in HGNC_IDs:
-                HGNC_IDs.insert(0, HGNC_symbol)
-        line['HGNC_ID'] = ','.join(HGNC_IDs)
+            if HGNC_symbol != False and HGNC_symbol not in HGNC_symbols:
+                HGNC_symbols.insert(0, HGNC_symbol)
+        line['HGNC_symbol'] = ','.join(HGNC_symbols)
         yield line
 
 def add_genome_build(data, genome_build):
@@ -386,7 +386,7 @@ def redpen2symbol(data):
     """
     for line in data:
         if 'Reduced_penetrance' in line and line['Reduced_penetrance'] == 'Yes':
-            line['Reduced_penetrance'] = line['HGNC_ID']
+            line['Reduced_penetrance'] = line['HGNC_symbol']
         yield line
 
 def remove_non_genes(data):
@@ -400,14 +400,14 @@ def remove_non_genes(data):
 
     """
     for line in data:
-        if 'HGNC_ID' not in line: # can't use mim2gene if there is no HGNC symbol
+        if 'HGNC_symbol' not in line: # can't use mim2gene if there is no HGNC symbol
             yield line
         else:
             yielded = False
-            HGNC_IDs = line['HGNC_ID'].split(',')
+            HGNC_symbols = line['HGNC_symbol'].split(',')
 
-            for HGNC_ID in HGNC_IDs:
-                if HGNC_ID in type_of and type_of[ HGNC_ID ] in ('gene', 'gene/phenotype'):
+            for HGNC_symbol in HGNC_symbols:
+                if HGNC_symbol in type_of and type_of[ HGNC_symbol ] in ('gene', 'gene/phenotype'):
                     yield line
                     yielded = True
                     break
@@ -432,7 +432,7 @@ def query_omim(data):
         data (list of dicts): Inner dict represents a row in a gene list
 
     Yields:
-        dict: with the added HGNC symbol prepended to the HGNC_ID column.
+        dict: with the added HGNC symbol prepended to the HGNC_symbol column.
     """
     TERMS_MAPPER = {
       'Autosomal recessive': 'AR',
@@ -447,8 +447,8 @@ def query_omim(data):
 
     omim = OMIM(api_key='<fill in key>')
     for line in data:
-        if 'HGNC_ID' in line:
-            entry = omim.gene(line['HGNC_ID'])
+        if 'HGNC_symbol' in line:
+            entry = omim.gene(line['HGNC_symbol'])
 
             phenotypic_disease_model = []
             models = set()
@@ -464,13 +464,13 @@ def query_omim(data):
                         phenotypic_disease_model.append(str(phenotype['phenotype_mim_number']))
 
             if len(phenotypic_disease_model) > 0:
-                line['Phenotypic_disease_model'] = '%s:%s' % (line['HGNC_ID'], '|'.join(phenotypic_disease_model))
+                line['Phenotypic_disease_model'] = '%s:%s' % (line['HGNC_symbol'], '|'.join(phenotypic_disease_model))
 
             # add OMIM morbid
             if entry['mim_number'] is not None:
                 if 'OMIM_morbid' in line and len(line['OMIM_morbid']) > 0 and line['OMIM_morbid'] != entry['mim_number']:
                     p('%s > %s client OMIM number differs from OMIM query' % (line['OMIM_morbid'], entry['mim_number']))
-                line['OMIM_morbid'] = '%s:%s' % (line['HGNC_ID'], entry['mim_number'])
+                line['OMIM_morbid'] = '%s:%s' % (line['HGNC_symbol'], entry['mim_number'])
 
             # add Gene_locus
             if entry['gene_location'] is not None:
@@ -548,7 +548,7 @@ def main(argv):
     else:
         fixed_data = genome_data
 
-    # add the mim2gene alias to HGNC_ID
+    # add the mim2gene alias to HGNC_symbol
     # remove non-genes based on mim2gene.txt
     if mim2gene:
         aliased_data = add_mim2gene_alias(fixed_data)
