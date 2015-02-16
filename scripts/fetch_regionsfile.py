@@ -22,14 +22,7 @@ def p(line, end=os.linesep):
     print('\033[93m', '>>> ', line, '\033[0m', end=end)
 
 def query():
-    """Queries EnsEMBL. Parameters are HGNC_ID and/or Ensembl_gene_id, whatever is available. Data from EnsEMBLdb will overwrite the client data.
-    A(n) identifier(s) should yield one result from EnsEMBLdb. It will be reported if a(n) identifier(s) don't yield any or multiple results.
-
-    Args:
-        data (list of dicts): representing the lines and columns in a gene list. The keys of the dicts must match the column names of the EnsEMBLdb query.
-        try_hgnc_again (bool): when providing multiple HGNC ids, try until you find a match on EnsEMBLdb. Only one HGNC ID will be used in final result.
-    Yields:
-        dict: a row with data from ensEMBLdb filled in.
+    """Queries EnsEMBL for all transcripts.
     """
     conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
     cur = conn.cursor(pymysql.cursors.DictCursor)
@@ -43,7 +36,7 @@ def query():
     line = ''
     prev_description = ''
     transcripts = []
-    print('Chr	Start	Stop	Ensembl_GENE_ID HGNC_Symbol	Ensembl_transcript_to_refseq_transcript	Gene_description')
+    print('#Chromosome	Gene_start	Gene_stop	Ensembl_gene_id HGNC_symbol	Ensembl_transcript_to_refseq_transcript	Gene_description')
     for row in rs:
         if row['Ensembl_ID'] != Ensembl_ID:
 
