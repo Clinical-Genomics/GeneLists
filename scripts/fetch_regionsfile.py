@@ -41,6 +41,10 @@ def fill_line(row):
 
 def query():
     """Queries EnsEMBL for all transcripts.
+
+    yields (str):
+        a line properly BED-formatted
+        
     """
     conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
     cur = conn.cursor(pymysql.cursors.DictCursor)
@@ -58,7 +62,6 @@ def query():
     prev_description = row['description']
     transcripts = ['%s>%s' % (row['Transcript_ID'], row['RefSeq_ID'])]
 
-    print('#Chromosome	Gene_start	Gene_stop	Ensembl_gene_id HGNC_symbol	Ensembl_transcript_to_refseq_transcript	Gene_description')
     for row in rs:
         if row['Ensembl_ID'] != Ensembl_ID:
 
@@ -68,7 +71,7 @@ def query():
             line += '%s:%s' % (Ensembl_ID, '|'.join(transcripts))
             line += '\t' + prev_description if prev_description != None else '';
 
-            print(line)
+            yield line
 
             # reset
             transcripts = []
@@ -85,14 +88,18 @@ def query():
     # print last one
     line += '%s:%s' % (Ensembl_ID, '|'.join(transcripts))
     line += '\t' + prev_description if prev_description != None else '';
-    print(line)
+    yield line
 
 def main(argv):
 
     # fill in missing blanks
     global conn
     conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
-    data = query()
+    data = sorted(query())
+
+    print('#Chromosome	Gene_start	Gene_stop	Ensembl_gene_id HGNC_symbol	Ensembl_transcript_to_refseq_transcript	Gene_description')
+    for line in data:
+        print(line)
 
 if __name__ == '__main__':
     main(sys.argv[1:])
