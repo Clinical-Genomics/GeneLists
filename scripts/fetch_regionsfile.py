@@ -5,6 +5,7 @@ from __future__ import print_function
 import os
 import sys
 import pymysql
+import re
 
 # EnsEMBL connection
 # TODO make this prettier
@@ -39,6 +40,24 @@ def fill_line(row):
 
     return '%s\t%d\t%d\t%s\t%s\t' % (row['Chromosome'], Gene_start, Gene_stop, row['Ensembl_ID'], row['HGNC_symbol'])
 
+def cleanup_description(description):
+    """Remove the comment in the description and clean up invalid characters: ,:;|>
+
+    Args:
+        description (str): text to clean up
+
+    Returns: str or None
+
+    """
+    if description:
+        description = description.strip()
+        description = re.sub(r'\[.*\]', '', description)
+        description = re.sub(r'[,:;>| ]', '_', description)
+        if description.endswith('_'):
+            description = description[:-1]
+        return description
+    return None
+
 def query():
     """Queries EnsEMBL for all transcripts.
 
@@ -49,7 +68,22 @@ def query():
     conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
     cur = conn.cursor(pymysql.cursors.DictCursor)
 
-    base_query = "select seq_region.name AS Chromosome, g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop, g.stable_id AS Ensembl_ID, xg.display_label AS HGNC_symbol, g.description, t.stable_id AS Transcript_ID, x.display_label AS RefSeq_ID from gene g left join transcript t on t.gene_id = g.gene_id join xref xg on xg.xref_id = g.display_xref_id join xref x on x.xref_id = t.display_xref_id join seq_region on g.seq_region_id = seq_region.seq_region_id where length(seq_region.name) < 3"
+    """
+    external_db_id = 1801
+    select * from xref where display_label like 'NM\_%' limit 10;
+    """
+
+    base_query = """
+        SELECT seq_region.name AS Chromosome, g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop, g.stable_id AS Ensembl_ID, xg.display_label AS HGNC_symbol, g.description, t.stable_id AS Transcript_ID, x.dbprimary_acc AS RefSeq_ID
+        FROM gene g
+        LEFT JOIN transcript t ON t.gene_id = g.gene_id
+        JOIN xref xg ON xg.xref_id = g.display_xref_id
+        LEFT JOIN object_xref ox ON ox.ensembl_id = t.transcript_id
+        JOIN xref x ON x.xref_id = ox.xref_id
+        JOIN seq_region ON g.seq_region_id = seq_region.seq_region_id
+        WHERE length(seq_region.name) < 3
+        AND x.external_db_id in (1801, 1810)
+    """
 
     cur.execute(base_query)
     rs = cur.fetchall() # result set
@@ -59,7 +93,7 @@ def query():
     # init
     Ensembl_ID = row['Ensembl_ID']
     line = fill_line(row)
-    prev_description = row['description']
+    prev_description = cleanup_description(row['description'])
     transcripts = ['%s>%s' % (row['Transcript_ID'], row['RefSeq_ID'])]
 
     for row in rs:
@@ -78,7 +112,7 @@ def query():
             Ensembl_ID = row['Ensembl_ID']
 
             line = fill_line(row)
-            prev_description = row['description']
+            prev_description = cleanup_description(row['description'])
 
         if row['RefSeq_ID'] == None:
             p('%s:%s has no RefSeqID' % (Ensembl_ID, row['Transcript_ID']))
@@ -97,7 +131,7 @@ def main(argv):
     conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
     data = sorted(query())
 
-    print('#Chromosome	Gene_start	Gene_stop	Ensembl_gene_id HGNC_symbol	Ensembl_transcript_to_refseq_transcript	Gene_description')
+    print('#Chromosome	Gene_start	Gene_stop	Ensembl_gene_id	HGNC_symbol	Ensembl_transcript_to_refseq_transcript	Gene_description')
     for line in data:
         print(line)
 
