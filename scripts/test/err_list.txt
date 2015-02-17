@@ -1,0 +1,11 @@
+##TESTING
+Chromosome	Gene_start	Gene_stop	HGNC_ID	Disease group_pathway	Protein_name	Symptoms	Biochemistry	Imaging	Disease_trivial_name	Trivial_name_short	Genetic_disease_model	OMIM_gene	OMIM_morbid	Gene_locus	Clinical_db_genome_build	UniProt_id	Ensembl_gene_id	Ensemble_transcript_ID	Reduced_penetrance	Clinical_db_gene_annotation	Disease_associated_transcript
+2	26413504	26467594	HADHA	Beta-oxidation cycle (incl electron transfer), Persistent hyperinsulinemic hypoglycemia	hydroxyacyl-CoA dehydrogenase/3-ketoacyl-CoA thiolase/enoyl-CoA hydratase (trifunctional protein),alpha subunit				LCHAD deficiency: Trifunctional protein deficiency		AR	600890		p23.3	GRCh37.p13	HADHA	ENSG00000084754	ENST00000380649		IEM	
+6	81816364	81055987		Amino acid metabolism	E1b					MSUD	AR	248611	248600	q14.1	GRCh37.p13	BCKDHB	ENSG00000083123	ENST00000320393		IEM	NM_183050.2
+1	100652475	100715390	DBT	Amino acid metabolism	E2 dihydrolipoamide acyltransferase					MSUD	AR	248610	248600	p21.2	GRCh37.p13	DBT	ENSG00000137992	ENST00000370132		IEM	NM_001918.3
+Z	40697686	40728146	IVD	Amino acid metabolism	Isovaleryl-CoA dehydrogenase					IVA	AR	607036	243500	q15.1	GRCh37.p13	IVD	ENSG00000128928	ENST00000487418		IEM	NM_002225.3
+13	100741269	101182686	PCCA	Amino acid metabolism	Propionyl-CoA carboxylase,alpha				Propionic aciduria	PA	AR	232000	606054	q32.3	GRCh37.p13	PCCA	ENSG00000175198	ENST00000376285		IEM	NM_000282.3
+3	135969148	136056738	PCCB	Amino acid metabolism	Propionyl-CoA carboxylase,beta				Propionic aciduria	PA		232050	606054	q22.3	GRCh37.p13	PCCB	ENSG00000114054	longest in CCDS?		IEM
+3	182733006	182833863	MCCC1	Amino acid metabolism	3-methyl crotonyl CoA carboxylase,alpha				3-methylcrotonyl glycinuria		AR	609010	210200		GRCh37.p13	MCCC1	ENSG00000078070	ENST00000265594			NM_020166.3
+MT	70883115	70954531	MCCC2	Amino acid metabolism	3-methyl crotonyl CoA carboxylase,beta				3-methylcrotonyl glycinuria		AR	609014	210210	q13.2	GRCh37.p13	MCCC2	ENGS00000131844	ENST00000340941		IEM	NM_022132.4
+MT	70883115	70954531	MCCC2	Amino acid metabolism	3-methyl crotonyl CoA carboxylase,beta				3-methylcrotonyl glycinuria		AR	609014	210210	q13.2	GRCh37.p13	MCCC2	ENGS00000131844	ENST00000340941		IEM	NM_022132.4
