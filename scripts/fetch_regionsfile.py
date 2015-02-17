@@ -7,10 +7,6 @@ import sys
 import pymysql
 import re
 
-# EnsEMBL connection
-# TODO make this prettier
-conn = None
-
 def p(line, end=os.linesep):
     """print pretty
 
@@ -86,9 +82,19 @@ def query():
     """
 
     cur.execute(base_query)
-    rs = cur.fetchall() # result set
+    return cur.fetchall() # result set
 
-    row = rs.pop(0)
+def process(data):
+    """Processes raw data:
+    * aggregates transcripts, RefSeq IDs 
+
+    Args:
+        data (dict): dictionary with following keys: Chromosome, Gene_start, Gene_stop, Ensembl_ID, HGNC_symbol, description, Transcript_ID, RefSeq_ID
+
+    yields (str): A string with transcripts, RefSeq IDs aggregated
+
+    """
+    row = data.pop(0)
 
     # init
     Ensembl_ID = row['Ensembl_ID']
@@ -96,7 +102,7 @@ def query():
     prev_description = cleanup_description(row['description'])
     transcripts = ['%s>%s' % (row['Transcript_ID'], row['RefSeq_ID'])]
 
-    for row in rs:
+    for row in data:
         if row['Ensembl_ID'] != Ensembl_ID:
 
             if len(transcripts) == 0:
@@ -127,9 +133,11 @@ def query():
 def main(argv):
 
     # fill in missing blanks
-    global conn
-    conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
-    data = sorted(query())
+    data = sorted(
+               process(
+                   query()
+               )
+           )
 
     print('#Chromosome	Gene_start	Gene_stop	Ensembl_gene_id	HGNC_symbol	Ensembl_transcript_to_refseq_transcript	Gene_description')
     for line in data:
