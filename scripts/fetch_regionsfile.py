@@ -70,15 +70,19 @@ def query():
     """
 
     base_query = """
-        SELECT seq_region.name AS Chromosome, g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop, g.stable_id AS Ensembl_ID, xg.display_label AS HGNC_symbol, g.description, t.stable_id AS Transcript_ID, x.dbprimary_acc AS RefSeq_ID
+        SELECT g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop,
+        x.display_label AS HGNC_symbol, g.stable_id AS Ensembl_ID,
+        seq_region.name AS Chromosome, t.stable_id AS Transcript_ID, g.description,
+        tx.dbprimary_acc AS RefSeq_ID
         FROM gene g
+        JOIN xref x ON x.xref_id = g.display_xref_id
+        JOIN seq_region USING (seq_region_id)
         LEFT JOIN transcript t ON t.gene_id = g.gene_id
-        JOIN xref xg ON xg.xref_id = g.display_xref_id
         LEFT JOIN object_xref ox ON ox.ensembl_id = t.transcript_id
-        JOIN xref x ON x.xref_id = ox.xref_id
-        JOIN seq_region ON g.seq_region_id = seq_region.seq_region_id
+        LEFT JOIN xref tx ON tx.xref_id = ox.xref_id
         WHERE length(seq_region.name) < 3
-        AND x.external_db_id in (1801, 1810)
+        AND tx.external_db_id in (1801, 1806, 1810)
+        ORDER BY g.stable_id
     """
 
     cur.execute(base_query)
