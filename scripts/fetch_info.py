@@ -11,7 +11,7 @@ from time import sleep
 from omim import OMIM
 from urllib.request import urlretrieve, Request, urlopen
 
-gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_symbol', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Phenotypic_disease_model', 'OMIM_morbid', 'Gene_locus', 'UniProt_id', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Reduced_penetrance', 'Clinical_db_gene_annotation', 'Disease_associated_transcript']
+gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_symbol', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Phenotypic_disease_model', 'OMIM_morbid', 'Gene_locus', 'UniProt_id', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Reduced_penetrance', 'Clinical_db_gene_annotation', 'Ensembl_transcript_to_refseq_transcript', 'Gene_description']
 
 # EnsEMBL connection
 # TODO make this prettier
@@ -130,7 +130,13 @@ def query(data, try_hgnc_again=False):
     conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
     cur = conn.cursor(pymysql.cursors.DictCursor)
 
-    base_query = "select g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop, x.display_label AS HGNC_symbol, g.stable_id AS Ensembl_gene_id, seq_region.name AS Chromosome from gene g join xref x on x.xref_id = g.display_xref_id join seq_region using (seq_region_id)"
+    base_query = """
+    SELECT g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop,
+    x.display_label AS HGNC_symbol, g.stable_id AS Ensembl_gene_id,
+    seq_region.name AS Chromosome
+    FROM gene g JOIN xref x ON x.xref_id = g.display_xref_id
+    join seq_region USING (seq_region_id)
+    """
     keys_conds = { 'HGNC_symbol': 'x.display_label', 'Ensembl_gene_id': 'g.stable_id', 'Chromosome': 'seq_region.name' }
 
     keys = ['HGNC_symbol', 'Ensembl_gene_id', 'Chromosome'] # these columns will be put into the condition statement if they have a value
@@ -139,8 +145,8 @@ def query(data, try_hgnc_again=False):
         HGNC_symbol_i=1
         for HGNC_symbol in HGNC_symbols:
             line['HGNC_symbol'] = HGNC_symbol # actually replace the entry
-            conds = [ "%s = %%s" % keys_conds[ key ] for key in keys if key in line and line[key] != None ]
-            cond_values = [ line[ key ] for key in keys if key in line ]
+            conds = [ "%s = %%s" % keys_conds[ key ] for key in keys if key in line and line[key] != None and len(line[key]) > 0 ]
+            cond_values = [ line[ key ] for key in keys if key in line and line[key] != None and len(line[key]) > 0 ]
 
             # check on length of the region name to exclude scaffolds and patches
             query = "%s where length(seq_region.name) < 3 and %s" % ( base_query, " and ".join(conds) )
@@ -184,6 +190,114 @@ def query(data, try_hgnc_again=False):
                     yield merge_line(entry, line)
                 break
             HGNC_symbol_i += 1
+
+def query_transcripts(data):
+    """Queries EnsEMBL for all transcripts.
+
+    Args
+        data (list of dicts): representing the lines and columns in a gene list. The keys of the dicts must match the column names of the EnsEMBLdb query.
+    Yields (dict):
+        a row with transcript data from ensEMBLdb filled in.
+
+    """
+    global conn
+    cur = conn.cursor(pymysql.cursors.DictCursor)
+
+    def _cleanup_description(description):
+        """Remove the comment in the description and clean up invalid characters: ,:;|>
+
+        Args:
+            description (str): text to clean up
+
+        Returns: str or None
+
+        """
+        if description:
+            description = description.strip()
+            description = re.sub(r'\[.*\]', '', description)
+            description = re.sub(r'[,:;>| ]', '_', description)
+            if description.endswith('_'):
+                description = description[:-1]
+            return description
+        return None
+
+    def _process_transcripts(data):
+        """Processes raw data:
+        * aggregates transcripts, RefSeq IDs
+
+        Args:
+            data (dict): dictionary with following keys: EnsEMBL_ID, description, Transcript_ID, RefSeq_ID
+
+        yields (str): A string with transcripts, RefSeq IDs aggregated
+
+        """
+        row = data.pop(0)
+
+        # init
+        Ensembl_ID = row['Ensembl_ID']
+        line = {} # will only hold two keys: Ensembl_transcript_to_refseq_transcript and Gene_description
+        prev_description = _cleanup_description(row['description'])
+        transcripts = ['%s>%s' % (row['Transcript_ID'], row['RefSeq_ID'])]
+
+        for row in data:
+            if row['Ensembl_ID'] != Ensembl_ID:
+
+                if len(transcripts) == 0:
+                    p(Ensembl_ID + ' has no transcripts!')
+
+                line['Ensembl_transcript_to_refseq_transcript'] = '%s:%s' % (Ensembl_ID, '|'.join(transcripts))
+                line['Gene_description'] = prev_description
+
+                yield line
+
+                # reset
+                transcripts = []
+                Ensembl_ID = row['Ensembl_ID']
+
+                line = {}
+                prev_description = _cleanup_description(row['description'])
+
+            if row['RefSeq_ID'] == None:
+                p('%s:%s has no RefSeqID' % (Ensembl_ID, row['Transcript_ID']))
+
+            transcripts.append('%s>%s' % (row['Transcript_ID'], row['RefSeq_ID']))
+
+        # yield last one
+        line['Ensembl_transcript_to_refseq_transcript'] = '%s:%s' % (Ensembl_ID, '|'.join(transcripts))
+        line['Gene_description'] = prev_description
+        yield line
+
+    """
+    external_db_id = 1801
+    select * from xref where display_label like 'NM\_%' limit 10;
+    """
+
+    for line in data:
+        base_query = """
+        SELECT g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop,
+        x.display_label AS HGNC_symbol, g.stable_id AS Ensembl_ID,
+        seq_region.name AS Chromosome, t.stable_id AS Transcript_ID, g.description,
+        tx.dbprimary_acc AS RefSeq_ID
+        FROM gene g
+        JOIN xref x ON x.xref_id = g.display_xref_id
+        JOIN seq_region USING (seq_region_id)
+        LEFT JOIN transcript t ON t.gene_id = g.gene_id
+        LEFT JOIN object_xref ox ON ox.ensembl_id = t.transcript_id
+        LEFT JOIN xref tx ON tx.xref_id = ox.xref_id
+        WHERE length(seq_region.name) < 3
+        AND tx.external_db_id in (1801, 1806, 1810)
+        AND g.stable_id = %s
+        """
+
+        cur.execute(base_query, line['Ensembl_gene_id'])
+        rs = cur.fetchall()
+        transcripts = _process_transcripts(rs)
+
+        for transcript in transcripts:
+            line['Ensembl_transcript_to_refseq_transcript'] = transcript['Ensembl_transcript_to_refseq_transcript']
+            line['Gene_description'] = transcript['Gene_description']
+
+        yield line
 
 def get_transcript(start, end, ensembl_gene_id=None, hgnc_id=None):
     """Queries EnsEMBL. Parameters are HGNC_symbol and/or Ensembl_gene_id, whatever is available. It will return one hit with the ensembl trasncript id.
@@ -561,8 +675,11 @@ def main(argv):
     conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
     ensembld_data = query(reduced_data, try_hgnc_again=True)
 
+    # aggregate transcripts
+    transcript_data = query_transcripts(ensembld_data)
+
     # fill in the inheritance models
-    omim_data = query_omim(ensembld_data)
+    omim_data = query_omim(transcript_data)
 
     # do some replacements
     redpen_data = redpen2symbol(omim_data)
