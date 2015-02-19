@@ -8,8 +8,10 @@ import argparse
 import re
 import os
 from time import sleep
-from .omim import OMIM
 from urllib.request import urlretrieve, Request, urlopen
+
+from .omim import OMIM
+from .ensembl import Ensembl
 
 gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_symbol', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Phenotypic_disease_model', 'OMIM_morbid', 'Gene_locus', 'UniProt_id', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Reduced_penetrance', 'Clinical_db_gene_annotation', 'Disease_associated_transcript', 'Ensembl_transcript_to_refseq_transcript', 'Gene_description']
 
@@ -200,116 +202,12 @@ def query_transcripts(data):
         a row with transcript data from ensEMBLdb filled in.
 
     """
-    global conn
-    cur = conn.cursor(pymysql.cursors.DictCursor)
 
-    def _cleanup_description(description):
-        """Remove the comment in the description and clean up invalid characters: ,:;|>
+    with Ensembl() as ensembldb:
+        for line in data:
+            line.update(ensembldb.query_transcripts(line['Ensembl_gene_id']))
 
-        Args:
-            description (str): text to clean up
-
-        Returns: str or None
-
-        """
-        if description:
-            description = description.strip()
-            description = re.sub(r'\[.*\]', '', description)
-            description = re.sub(r'[,:;>| ]', '_', description)
-            if description.endswith('_'):
-                description = description[:-1]
-            return description
-        return None
-
-    def _join_refseqs(transcripts):
-        transcripts_refseqs = []
-        for transcript in sorted(transcripts.keys()):
-            refseqs = '/'.join(sorted([ refseq for refseq in transcripts[ transcript ] if refseq != None ]))
-
-            if len(refseqs) == 0:
-                transcripts_refseqs.append(transcript)
-            else:
-                transcripts_refseqs.append('%s>%s' % (transcript, refseqs))
-
-        return transcripts_refseqs
-
-    def _process_transcripts(data):
-        """Processes raw data:
-        * aggregates transcripts, RefSeq IDs
-
-        Args:
-            data (dict): dictionary with following keys: EnsEMBL_ID, description, Transcript_ID, RefSeq_ID
-
-        yields (str): A string with transcripts, RefSeq IDs aggregated
-
-        """
-        row = data.pop(0)
-
-        # init
-        Ensembl_ID = row['Ensembl_ID']
-        line = {} # will only hold two keys: Ensembl_transcript_to_refseq_transcript and Gene_description
-        prev_description = _cleanup_description(row['description'])
-        transcripts = { row['Transcript_ID']: [ row['RefSeq_ID'] ] }
-
-        for row in data:
-            if row['Ensembl_ID'] != Ensembl_ID:
-
-                if len(transcripts) == 0:
-                    p(Ensembl_ID + ' has no transcripts!')
-
-                line['Ensembl_transcript_to_refseq_transcript'] = '%s:%s' % (Ensembl_ID, '|'.join(_join_refseqs(transcripts)))
-                line['Gene_description'] = prev_description
-
-                yield line
-
-                # reset
-                transcripts = {}
-                Ensembl_ID = row['Ensembl_ID']
-
-                line = {}
-                prev_description = _cleanup_description(row['description'])
-
-            if row['Transcript_ID'] not in transcripts:
-                transcripts[ row['Transcript_ID'] ] = []
-            transcripts[ row['Transcript_ID'] ].append(row['RefSeq_ID'])
-
-        # yield last one
-        line['Ensembl_transcript_to_refseq_transcript'] = '%s:%s' % (Ensembl_ID, '|'.join(_join_refseqs(transcripts)))
-        line['Gene_description'] = prev_description
-        yield line
-
-    """
-    external_db_id = 1801
-    select * from xref where display_label like 'NM\_%' limit 10;
-    """
-
-    for line in data:
-        base_query = """
-        SELECT DISTINCT g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop,
-        x.display_label AS HGNC_symbol, g.stable_id AS Ensembl_ID,
-        seq_region.name AS Chromosome, t.stable_id AS Transcript_ID, g.description,
-        tx.dbprimary_acc AS RefSeq_ID
-        FROM gene g
-        JOIN xref x ON x.xref_id = g.display_xref_id
-        JOIN seq_region USING (seq_region_id)
-        LEFT JOIN transcript t ON t.gene_id = g.gene_id
-        LEFT JOIN object_xref ox ON ox.ensembl_id = t.transcript_id AND ox.ensembl_object_type = 'Transcript'
-        LEFT JOIN xref tx ON tx.xref_id = ox.xref_id AND tx.external_db_id in (1801, 1806, 1810)
-        WHERE length(seq_region.name) < 3
-        AND g.stable_id = %s
-        ORDER BY g.gene_id, t.transcript_id
-        """
-
-        cur.execute(base_query, line['Ensembl_gene_id'])
-        rs = cur.fetchall()
-        if len(rs) > 0:
-            transcripts = _process_transcripts(rs)
-
-            for transcript in transcripts:
-                line['Ensembl_transcript_to_refseq_transcript'] = transcript['Ensembl_transcript_to_refseq_transcript']
-                line['Gene_description'] = transcript['Gene_description']
-
-        yield line
+            yield line
 
 def get_transcript(start, end, ensembl_gene_id=None, hgnc_id=None):
     """Queries EnsEMBL. Parameters are HGNC_symbol and/or Ensembl_gene_id, whatever is available. It will return one hit with the ensembl trasncript id.
