@@ -72,8 +72,14 @@ class Ensembl:
 
             # init
             Ensembl_ID = row['Ensembl_ID']
-            line = {} # will only hold two keys: Ensembl_transcript_to_refseq_transcript and Gene_description
-            prev_description = _cleanup_description(row['description'])
+            line = { # keys: Ensembl_transcript_to_refseq_transcript, Gene_description, Gene_start, Gene_stop, Chromosome, HGNC_symbol, Ensembl_gene_id
+                'Gene_description': _cleanup_description(row['description']),
+                'Gene_start': row['Gene_start'],
+                'Gene_stop': row['Gene_stop'],
+                'Chromosome': row['Chromosome'],
+                'HGNC_symbol': row['HGNC_symbol'],
+                'Ensembl_gene_id': Ensembl_ID
+            }
             transcripts = { row['Transcript_ID']: [ row['RefSeq_ID'] ] }
 
             for row in data:
@@ -83,16 +89,19 @@ class Ensembl:
                         p(Ensembl_ID + ' has no transcripts!')
 
                     line['Ensembl_transcript_to_refseq_transcript'] = '%s:%s' % (Ensembl_ID, '|'.join(_join_refseqs(transcripts)))
-                    line['Gene_description'] = prev_description
-
                     yield line
 
                     # reset
                     transcripts = {}
                     Ensembl_ID = row['Ensembl_ID']
-
-                    line = {}
-                    prev_description = _cleanup_description(row['description'])
+                    line = {
+                        'Gene_description': _cleanup_description(row['description']),
+                        'Gene_start': row['Gene_start'],
+                        'Gene_stop': row['Gene_stop'],
+                        'Chromosome': row['Chromosome'],
+                        'HGNC_symbol': row['HGNC_symbol'],
+                        'Ensembl_gene_id': Ensembl_ID
+                    }
 
                 if row['Transcript_ID'] not in transcripts:
                     transcripts[ row['Transcript_ID'] ] = []
@@ -100,7 +109,6 @@ class Ensembl:
 
             # yield last one
             line['Ensembl_transcript_to_refseq_transcript'] = '%s:%s' % (Ensembl_ID, '|'.join(_join_refseqs(transcripts)))
-            line['Gene_description'] = prev_description
             yield line
 
         """
@@ -130,7 +138,4 @@ class Ensembl:
             transcripts = _process_transcripts(rs)
 
             for transcript in transcripts:
-                return {
-                    'Ensembl_transcript_to_refseq_transcript': transcript['Ensembl_transcript_to_refseq_transcript'],
-                    'Gene_description': transcript['Gene_description'],
-                }
+                return transcript
