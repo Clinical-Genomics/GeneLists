@@ -4,19 +4,9 @@
 from __future__ import print_function
 import os
 import sys
-import pymysql
 import re
 
-def p(line, end=os.linesep):
-    """print pretty
-
-    Args:
-        line (str): line to print to STDOUT
-
-    Returns:
-        pass
-    """
-    print('\033[93m', '>>> ', line, '\033[0m', end=end)
+from .ensembl import Ensembl
 
 def fill_line(row):
     """Formats a line in the regions file with information found in the row
@@ -34,118 +24,20 @@ def fill_line(row):
     if row['Gene_start'] > row['Gene_stop']:
         Gene_start, Gene_stop = Gene_stop, Gene_start
 
-    return '%s\t%d\t%d\t%s\t%s\t' % (row['Chromosome'], Gene_start, Gene_stop, row['Ensembl_ID'], row['HGNC_symbol'])
+    # set a default value for None
+    for key,value in row.items():
+        row[key] = '' if value == None else str(value)
 
-def cleanup_description(description):
-    """Remove the comment in the description and clean up invalid characters: ,:;|>
-
-    Args:
-        description (str): text to clean up
-
-    Returns: str or None
-
-    """
-    if description:
-        description = description.strip()
-        description = re.sub(r'\[.*\]', '', description)
-        description = re.sub(r'[,:;>| ]', '_', description)
-        if description.endswith('_'):
-            description = description[:-1]
-        return description
-    return None
-
-def query():
-    """Queries EnsEMBL for all transcripts.
-
-    yields (str):
-        a line properly BED-formatted
-        
-    """
-    conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
-    cur = conn.cursor(pymysql.cursors.DictCursor)
-
-    """
-    external_db_id = 1801
-    select * from xref where display_label like 'NM\_%' limit 10;
-    """
-
-    base_query = """
-        SELECT g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop,
-        x.display_label AS HGNC_symbol, g.stable_id AS Ensembl_ID,
-        seq_region.name AS Chromosome, t.stable_id AS Transcript_ID, g.description,
-        tx.dbprimary_acc AS RefSeq_ID
-        FROM gene g
-        JOIN xref x ON x.xref_id = g.display_xref_id
-        JOIN seq_region USING (seq_region_id)
-        LEFT JOIN transcript t ON t.gene_id = g.gene_id
-        LEFT JOIN object_xref ox ON ox.ensembl_id = t.transcript_id
-        LEFT JOIN xref tx ON tx.xref_id = ox.xref_id
-        WHERE length(seq_region.name) < 3
-        AND tx.external_db_id in (1801, 1806, 1810)
-        ORDER BY g.stable_id
-    """
-
-    cur.execute(base_query)
-    return cur.fetchall() # result set
-
-def process(data):
-    """Processes raw data:
-    * aggregates transcripts, RefSeq IDs 
-
-    Args:
-        data (dict): dictionary with following keys: Chromosome, Gene_start, Gene_stop, Ensembl_ID, HGNC_symbol, description, Transcript_ID, RefSeq_ID
-
-    yields (str): A string with transcripts, RefSeq IDs aggregated
-
-    """
-    row = data.pop(0)
-
-    # init
-    Ensembl_ID = row['Ensembl_ID']
-    line = fill_line(row)
-    prev_description = cleanup_description(row['description'])
-    transcripts = ['%s>%s' % (row['Transcript_ID'], row['RefSeq_ID'])]
-
-    for row in data:
-        if row['Ensembl_ID'] != Ensembl_ID:
-
-            if len(transcripts) == 0:
-                p(Ensembl_ID + ' has no transcripts!')
-
-            line += '%s:%s' % (Ensembl_ID, '|'.join(transcripts))
-            line += '\t' + prev_description if prev_description != None else '';
-
-            yield line
-
-            # reset
-            transcripts = []
-            Ensembl_ID = row['Ensembl_ID']
-
-            line = fill_line(row)
-            prev_description = cleanup_description(row['description'])
-
-        if row['RefSeq_ID'] == None:
-            p('%s:%s has no RefSeqID' % (Ensembl_ID, row['Transcript_ID']))
-
-        transcripts.append('%s>%s' % (row['Transcript_ID'], row['RefSeq_ID']))
-
-    # print last one
-    line += '%s:%s' % (Ensembl_ID, '|'.join(transcripts))
-    line += '\t' + prev_description if prev_description != None else '';
-    yield line
+    return '\t'.join([row['Chromosome'], row['Gene_start'], row['Gene_stop'], row['Ensembl_gene_id'], row['HGNC_symbol'], row['Ensembl_transcript_to_refseq_transcript'], row['Gene_description']])
 
 def main(argv):
 
-    # fill in missing blanks
-    data = sorted(
-               process(
-                   query()
-               )
-           )
+    with Ensembl() as ensembldb:
+        transcripts = ensembldb.query_transcripts()
 
     print('#Chromosome	Gene_start	Gene_stop	Ensembl_gene_id	HGNC_symbol	Ensembl_transcript_to_refseq_transcript	Gene_description')
-    for line in data:
-        print(line)
+    for transcript in transcripts:
+        print(fill_line(transcript))
 
 if __name__ == '__main__':
     main(sys.argv[1:])

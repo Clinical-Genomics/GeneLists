@@ -16,7 +16,7 @@ class Ensembl:
     def __exit__(self,type, value, traceback):
         self.conn.close()
 
-    def query_transcripts(self, gene_id):
+    def query_transcripts(self, gene_id=None):
         """Queries EnsEMBL for all transcripts.
 
         Args
@@ -128,14 +128,20 @@ class Ensembl:
         LEFT JOIN object_xref ox ON ox.ensembl_id = t.transcript_id AND ox.ensembl_object_type = 'Transcript'
         LEFT JOIN xref tx ON tx.xref_id = ox.xref_id AND tx.external_db_id in (1801, 1806, 1810)
         WHERE length(seq_region.name) < 3
-        AND g.stable_id = %s
-        ORDER BY g.gene_id, t.transcript_id
         """
+
+        if gene_id:
+            base_query += " AND g.stable_id = %s "
+
+        base_query += " ORDER BY g.gene_id, t.transcript_id"
 
         cur.execute(base_query, gene_id)
         rs = cur.fetchall()
         if len(rs) > 0:
             transcripts = _process_transcripts(rs)
 
+            # some returns
+            if not gene_id:
+                return transcripts
             for transcript in transcripts:
                 return transcript
