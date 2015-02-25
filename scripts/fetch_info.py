@@ -458,37 +458,16 @@ def query_omim(data):
     Yields:
         dict: with the added HGNC symbol prepended to the HGNC_symbol column.
     """
-    TERMS_MAPPER = {
-      'Autosomal recessive': 'AR',
-      'Autosomal dominant': 'AD',
-      'X-linked dominant': 'XD',
-      'X-linked recessive': 'XR',
-    }
-
-    TERMS_BLACKLIST = [
-      'Isolated cases',
-    ]
 
     omim = OMIM(api_key='<fill in key>')
     for line in data:
         if 'HGNC_symbol' in line:
             entry = omim.gene(line['HGNC_symbol'])
 
-            phenotypic_disease_model = []
-            models = set()
-            for phenotype in entry['phenotypes']:
-                if phenotype['inheritance'] is not None:
-                    models.update([model.strip('? ') for model in phenotype['inheritance'].split(';')])
-                    models = models.difference(TERMS_BLACKLIST) # remove blacklisted terms
-                    models = set([TERMS_MAPPER.get(model_human, model_human) for model_human in models]) # rename them if possible
-
-                    phenotypic_disease_model.append('%s>%s' % (phenotype['phenotype_mim_number'], '/'.join(models)))
-                else:
-                    if (phenotype['phenotype_mim_number'] is not None):
-                        phenotypic_disease_model.append(str(phenotype['phenotype_mim_number']))
+            phenotypic_disease_model = omim.parse_phenotypic_disease_model(entry['phenotypes'])
 
             if len(phenotypic_disease_model) > 0:
-                line['Phenotypic_disease_model'] = '%s:%s' % (line['HGNC_symbol'], '|'.join(phenotypic_disease_model))
+                line['Phenotypic_disease_model'] = '%s:%s' % (line['HGNC_symbol'], phenotypic_disease_model)
 
             # add OMIM morbid
             if entry['mim_number'] is not None:

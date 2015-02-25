@@ -81,6 +81,42 @@ class OMIM(object):
 
     return url, params
 
+  def parse_phenotypic_disease_model(self, phenotypes):
+    """Compose Phenotypic_disease_model entry based on the inheritance models of a gene.
+    Such entry might look like: 614096>AR|615889>AR
+
+    Args:
+        phenotypes (list of dicts): each dict represents a phenotype. This is the 'phenotypes' key in the data returned from OMIM
+
+    Returns: TODO
+
+    """
+    TERMS_MAPPER = {
+      'Autosomal recessive': 'AR',
+      'Autosomal dominant': 'AD',
+      'X-linked dominant': 'XD',
+      'X-linked recessive': 'XR',
+    }
+
+    TERMS_BLACKLIST = [
+      'Isolated cases',
+    ]
+
+    phenotypic_disease_model = []
+    models = set()
+    for phenotype in phenotypes:
+      if phenotype['inheritance'] is not None:
+        models.update([model.strip('? ') for model in phenotype['inheritance'].split(';')])
+        models = models.difference(TERMS_BLACKLIST) # remove blacklisted terms
+        models = set([TERMS_MAPPER.get(model_human, model_human) for model_human in models]) # rename them if possible
+
+        phenotypic_disease_model.append('%s>%s' % (phenotype['phenotype_mim_number'], '/'.join(models)))
+      else:
+        if (phenotype['phenotype_mim_number'] is not None):
+          phenotypic_disease_model.append(str(phenotype['phenotype_mim_number']))
+
+    return '|'.join(phenotypic_disease_model)
+
   def gene(self, hgnc_symbol):
     entry = self.search_gene(hgnc_symbol)
 
@@ -109,7 +145,7 @@ class OMIM(object):
         import time
         time.sleep(sleep)
         res = requests.get(url, params=params)
-        if sleep > 1000:
+        if sleep > 1000: # if sleeping for 15mins, reset
             sleep = 1
         else:
             sleep *= 2
@@ -122,7 +158,6 @@ class OMIM(object):
       return entries[0]['entry']
     else:
       return {}
-
 
   def clinical_synopsis(self, mim, include=('clinicalSynopsis',),
                         exclude=None):
