@@ -23,7 +23,6 @@ def getgittag(filename):
 
     return tag
 
-
 def main(argv):
     parser = argparse.ArgumentParser(description='Merge gene lists. Will only output HGNC_symbol, EnsEMBL_gene_id and Database columns.')
     parser.add_argument('infiles', nargs="+", type=argparse.FileType('r'), help='')
@@ -72,7 +71,7 @@ def main(argv):
             for database in line_databases:
                 if database not in versions[infile.name]:
                     version = getgittag(infile.name)
-                    versions[infile.name][database] = getgittag(infile.name)
+                    versions[infile.name][database] = version
 
     for filename, database_version in versions.items():
         for database, version in database_version.items():
