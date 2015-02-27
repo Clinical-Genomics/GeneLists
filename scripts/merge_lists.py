@@ -8,41 +8,7 @@ import subprocess
 import os
 from datetime import datetime
 
-def getgittag(filename):
-    """Gets the current version of a gene list
-
-    Args:
-        filename (str): the name of the gene list
-
-    Returns (str): a version (tag) of the gene list
-
-    """
-    cwd = os.getcwd()
-    os.chdir(os.path.dirname(filename))
-    tag = subprocess.check_output(['git', 'describe']).decode('utf-8').strip()
-    os.chdir(cwd)
-
-    return tag
-
-def getgitlastmoddate(filename):
-    """Gets the last modifiation date of a gene list
-
-    Args:
-        filename (str): the name of the gene list
-
-    Returns (str): return date (e.g. 20150225)
-
-    """
-    cwd = os.getcwd()
-    os.chdir(os.path.dirname(filename))
-    full_str_date = subprocess.check_output(['git', 'log', '-1', '--format=%ad', '--', filename]).decode('utf-8').strip()
-    os.chdir(cwd)
-
-    # Mon Feb 9 14:19:16 2015 +0100
-    full_date = datetime.strptime(full_str_date.partition('+')[0], '%a %b %d %H:%M:%S %Y ')
-    #full_date = datetime.strptime(full_str_date, '%c')
-
-    return full_date.strftime('%Y%m%d')
+from .git import getgitlastmoddate, getgittag
 
 def main(argv):
     parser = argparse.ArgumentParser(description='Merge gene lists. Will only output HGNC_symbol, EnsEMBL_gene_id and Database columns.')
