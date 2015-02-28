@@ -17,7 +17,12 @@ def getgittag(filename):
     """
     cwd = os.getcwd()
     os.chdir(os.path.dirname(filename))
-    tag = subprocess.check_output(['git', 'describe']).decode('utf-8').strip()
+
+    try:
+        tag = subprocess.check_output(['git', 'describe']).decode('utf-8').strip()
+    except subprocess.CalledProcessError:
+        return None
+
     os.chdir(cwd)
 
     return tag
