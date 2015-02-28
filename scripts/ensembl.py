@@ -6,10 +6,10 @@ import re
 
 class Ensembl:
 
-    def __init__(self, host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37'):
+    def __init__(self, host='localhost', port=3306, user='anonymous', db='homo_sapiens_core_75_37'):
         self.conn = pymysql.connect(host=host, port=port, user=user, db=db)
 
-    def __enter__(self, host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37'):
+    def __enter__(self, host='localhost', port=3306, user='anonymous', db='homo_sapiens_core_75_37'):
         self.conn = pymysql.connect(host=host, port=port, user=user, db=db) # TODO find out how to combine init with enter
         return self
 
@@ -44,7 +44,7 @@ class Ensembl:
                 if description.endswith('_'):
                     description = description[:-1]
                 return description
-            return None
+            return ''
 
         def _join_refseqs(transcripts):
             transcripts_refseqs = []
@@ -71,36 +71,36 @@ class Ensembl:
             row = data.pop(0)
 
             # init
-            Ensembl_ID = row['Ensembl_ID']
+            Ensembl_gene_id = row['Ensembl_gene_id']
             line = { # keys: Ensembl_transcript_to_refseq_transcript, Gene_description, Gene_start, Gene_stop, Chromosome, HGNC_symbol, Ensembl_gene_id
                 'Gene_description': _cleanup_description(row['description']),
                 'Gene_start': row['Gene_start'],
                 'Gene_stop': row['Gene_stop'],
                 'Chromosome': row['Chromosome'],
                 'HGNC_symbol': row['HGNC_symbol'],
-                'Ensembl_gene_id': Ensembl_ID
+                'Ensembl_gene_id': Ensembl_gene_id
             }
             transcripts = { row['Transcript_ID']: [ row['RefSeq_ID'] ] }
 
             for row in data:
-                if row['Ensembl_ID'] != Ensembl_ID:
+                if row['Ensembl_gene_id'] != Ensembl_gene_id:
 
                     if len(transcripts) == 0:
-                        p(Ensembl_ID + ' has no transcripts!')
+                        p(Ensembl_gene_id + ' has no transcripts!')
 
-                    line['Ensembl_transcript_to_refseq_transcript'] = '%s:%s' % (Ensembl_ID, '|'.join(_join_refseqs(transcripts)))
+                    line['Ensembl_transcript_to_refseq_transcript'] = '%s:%s' % (Ensembl_gene_id, '|'.join(_join_refseqs(transcripts)))
                     yield line
 
                     # reset
                     transcripts = {}
-                    Ensembl_ID = row['Ensembl_ID']
+                    Ensembl_gene_id = row['Ensembl_gene_id']
                     line = {
                         'Gene_description': _cleanup_description(row['description']),
                         'Gene_start': row['Gene_start'],
                         'Gene_stop': row['Gene_stop'],
                         'Chromosome': row['Chromosome'],
                         'HGNC_symbol': row['HGNC_symbol'],
-                        'Ensembl_gene_id': Ensembl_ID
+                        'Ensembl_gene_id': Ensembl_gene_id
                     }
 
                 if row['Transcript_ID'] not in transcripts:
@@ -108,7 +108,7 @@ class Ensembl:
                 transcripts[ row['Transcript_ID'] ].append(row['RefSeq_ID'])
 
             # yield last one
-            line['Ensembl_transcript_to_refseq_transcript'] = '%s:%s' % (Ensembl_ID, '|'.join(_join_refseqs(transcripts)))
+            line['Ensembl_transcript_to_refseq_transcript'] = '%s:%s' % (Ensembl_gene_id, '|'.join(_join_refseqs(transcripts)))
             yield line
 
         """
@@ -118,7 +118,7 @@ class Ensembl:
 
         base_query = """
         SELECT DISTINCT g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop,
-        x.display_label AS HGNC_symbol, g.stable_id AS Ensembl_ID,
+        x.display_label AS HGNC_symbol, g.stable_id AS Ensembl_gene_id,
         seq_region.name AS Chromosome, t.stable_id AS Transcript_ID, g.description,
         tx.dbprimary_acc AS RefSeq_ID
         FROM gene g
