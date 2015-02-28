@@ -9,6 +9,7 @@ import os
 from datetime import datetime
 
 from .git import getgitlastmoddate, getgittag
+from .acronymns import Acronymns
 
 def main(argv):
     parser = argparse.ArgumentParser(description='Merge gene lists. Will only output HGNC_symbol, EnsEMBL_gene_id and Database columns.')
@@ -19,6 +20,8 @@ def main(argv):
     databases = []
     if len(args.database):
         databases = [ db[0] for db in args.database ]
+
+    acronymns = Acronymns(os.path.dirname(os.path.dirname(os.path.realpath(args.infiles[0].name))))
 
     versions = {} # Filename => { Database => { 'Version': Version, 'Date': Date } }
     data = {} # HGNC_symbol => {'HGNC_symbol' => '', 'EnsEMBLid' => [], 'Databases' => () }
@@ -59,11 +62,12 @@ def main(argv):
                 if database not in versions[infile.name]:
                     version = getgittag(infile.name)
                     mod_date = getgitlastmoddate(infile.name)
-                    versions[infile.name][database] = { 'Version': version, 'Date': mod_date }
+                    full_name = acronymns[database]
+                    versions[infile.name][database] = { 'Version': version, 'Date': mod_date, 'Fullname': full_name }
 
     for filename, database_version in versions.items():
         for database, version_date in database_version.items():
-            print('##Database=<ID=%s,Version=%s,Date=%s,Acronym=%s,Clinical_db_genome_build=GRCh37.p13' % (os.path.basename(filename), version_date['Version'], version_date['Date'], database))
+            print('##Database=<ID=%s,Version=%s,Date=%s,Acronym=%s,Complete_name=%s,Clinical_db_genome_build=GRCh37.p13' % (os.path.basename(filename), version_date['Version'], version_date['Date'], database, version_date['Fullname']))
 
     print('HGNC_symbol	Ensembl_gene_id	Clinical_db_gene_annotation	Reduced_penetrance	Disease_associated_transcript')
     for line in data.values():
