@@ -4,28 +4,37 @@
 # tag it with a version
 # and retrieve the version + branch of the software it was generated with
 
+# exit on errr
+set -e
 
-if [[ ${#@} < 3 ]]; then
-    echo "USAGE:"
+if [[ ${#@} < 2 ]]; then
+    echo "USAGE: $0 genelist repo tag"
+    echo "	$0 ~/bitbucket/GeneList/cust000 5.1"
     exit 1
 fi
 
 GENELIST=$1
-REPO=$2
-TAG=$3
+TAG=$2
 OLD_WD=$(pwd)
 
-# get current software version and branch
+# get current software version and branch of generated software repo
+cd $(dirname $(readlink -n -m $0))
 VERSION=$(git describe | tail -1 2> /dev/null)
 BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
+cd $OLD_WD
 
+# say something
 read -p "Commit message: " MSG
 
-cp "$GENELIST" "$REPO"
-cd "$REPO"
-git add "$GENELIST"
-git commit -m $MSG
-git tag -a "$TAG" -m $MSG
+cd "$(dirname $GENELIST)"
 
+# add the version to a changelog
 DATE=$(date +"%y/%m/%d %H:%M")
-echo "$DATE :: SOFTWARE VERSION $BRANCH:$VERSION" >> CHANGELOG
+echo "$DATE :: Generated with version $BRANCH:$VERSION" > CHANGELOG
+
+# commit + tag
+git add "$(basename $GENELIST)"
+git add CHANGELOG
+git commit -m "$MSG"
+git tag -a "$TAG" -m "$MSG"
+
