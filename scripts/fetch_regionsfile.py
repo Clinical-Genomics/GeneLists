@@ -70,7 +70,7 @@ def get_lines(transcripts, repodir):
     mod_date = strftime('%Y%m%d')
 
     # yield some headers
-    yield '##Database=<ID=cust000-Research.txt,Version=%s,Date=%s,Acronym=Research,Clinical_db_genome_build=GRCh37.p13' % (version, mod_date)
+    yield '##Database=<ID=cust000-Research.txt,Version=%s,Date=%s,Acronym=Research,Complete_name=Research,Clinical_db_genome_build=GRCh37.p13' % (version, mod_date)
     yield '#' + '\t'.join(header)
     for transcript in transcripts:
         yield fill_line(transcript)
