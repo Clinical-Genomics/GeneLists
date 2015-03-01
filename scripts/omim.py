@@ -2,6 +2,7 @@
 from __future__ import absolute_import, unicode_literals
 from datetime import datetime
 
+import time
 import requests
 
 def format_entry(json_entry):
@@ -115,6 +116,8 @@ class OMIM(object):
         if (phenotype['phenotype_mim_number'] is not None):
           phenotypic_disease_model.append(str(phenotype['phenotype_mim_number']))
 
+    if len(phenotypic_disease_model) == 0:
+      return None
     return '|'.join(phenotypic_disease_model)
 
   def gene(self, hgnc_symbol):
@@ -137,14 +140,23 @@ class OMIM(object):
     params['search'] = "approved_gene_symbol:%s" % hgnc_symbol
     params['include'] = include
 
-    res = requests.get(url, params=params)
-
-    # when we get trottled, give it a sec
-    sleep = 1
-    while res.status_code == requests.codes.conflict:
-        import time
+    res = False
+    sleep = 0
+    retry = True # Execute the first
+    while retry or res.status_code == requests.codes.conflict:
         time.sleep(sleep)
-        res = requests.get(url, params=params)
+
+        try:
+            retry = False
+            res = requests.get(url, params=params)
+        except Exception:
+            retry = True
+        #except TypeError:
+        #    retry = True
+        #except ProtocolError:
+        #    retry = True
+
+        # when we get trottled, give it a sec
         if sleep > 1000: # if sleeping for 15mins, reset
             sleep = 1
         else:
