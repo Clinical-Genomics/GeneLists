@@ -28,8 +28,9 @@ def main(argv):
     for infile in args.infiles:
         versions[infile.name] = {}
         for line in infile:
-            if line.startswith('#'): continue
+            if line.startswith('#'): continue # skip comments
             line = line.split("\t")
+            if len(line) < 21: continue # crude way of omitting non-gene lists
             hgnc_id = line[3].strip()
             ensEMBLid = line[17].strip()
             red_pen = line[19].strip()
