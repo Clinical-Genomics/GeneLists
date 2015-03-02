@@ -41,15 +41,15 @@ def main(argv):
     print("""
 ---
 layout: base
-permalink: /genlistanamn/
-title: Gene Lista Namn
+permalink: /namnpagenlistor
+title: Namn på genlistor
 ---
 
-# Gen Lista Namn
+# Namn på genlistor
 
 """)
 
-    keys = ['Database', 'Beskrivning', 'Version', 'Datum']
+    keys = ['Databas', 'Beskrivning', 'Version', 'Datum']
     print('|%s|' % '|'.join(keys))
     print('|%s' % ('---|' * len(keys)))
     for database in sorted(versions.keys()):
