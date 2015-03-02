@@ -28,20 +28,20 @@ def main(argv):
         database = match.group(1)
 
         # fill versions dict
-        version = getgittag(infile.name)
-        mod_date = getgitlastmoddate(infile.name)
+        mod_date = getgitlastmoddate(infile.name, '%Y-%m-%d %H:%M:%S')
+        version = getgittag(infile.name, date=mod_date) # get version on that date
         full_name = acronyms[database]
         versions[database] = {
             'Version': version,
-            'Date': mod_date,
-            'Fullname': full_name,
-            'Database': database
+            'Datum': mod_date.partition(' ')[0],
+            'Beskrivning': full_name,
+            'Databas': database
         }
 
     print("""
 ---
 layout: base
-permalink: /namnpagenlistor
+permalink: /namnpagenlistor/
 title: Namn på genlistor
 ---
 
