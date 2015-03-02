@@ -37,4 +37,12 @@ git add "$(basename $GENELIST)"
 git add CHANGELOG
 git commit -m "$MSG"
 git tag -a "$TAG" -m "$MSG"
+git push
+git push --tags origin
 
+# update clinicalgenomics.se
+python update_cg.py $(dirname $(dirname $GENELIST))/cust00[1234]/cust*.txt > ~/git/clinical-genomics.github.io/_pages/genelistanamn.md
+cd ~/git/clinical-genomics.github.io
+git add _pages/genelistanamn.md
+git commit -m "Update to $(basename $GENELIST)"
+git push
