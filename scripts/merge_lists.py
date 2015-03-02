@@ -9,7 +9,7 @@ import os
 from datetime import datetime
 
 from .git import getgitlastmoddate, getgittag
-from .acronymns import Acronymns
+from .acronyms import Acronyms
 
 def main(argv):
     parser = argparse.ArgumentParser(description='Merge gene lists. Will only output HGNC_symbol, EnsEMBL_gene_id and Database columns.')
@@ -21,7 +21,7 @@ def main(argv):
     if len(args.database):
         databases = [ db[0] for db in args.database ]
 
-    acronymns = Acronymns(os.path.dirname(os.path.dirname(os.path.realpath(args.infiles[0].name))))
+    acronyms = Acronyms(os.path.dirname(os.path.dirname(os.path.realpath(args.infiles[0].name))))
 
     versions = {} # Filename => { Database => { 'Version': Version, 'Date': Date } }
     data = {} # HGNC_symbol => {'HGNC_symbol' => '', 'EnsEMBLid' => [], 'Databases' => () }
@@ -62,7 +62,7 @@ def main(argv):
                 if database not in versions[infile.name]:
                     version = getgittag(infile.name)
                     mod_date = getgitlastmoddate(infile.name)
-                    full_name = acronymns[database]
+                    full_name = acronyms[database]
                     versions[infile.name][database] = { 'Version': version, 'Date': mod_date, 'Fullname': full_name }
 
     for filename, database_version in versions.items():
