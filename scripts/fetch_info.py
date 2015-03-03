@@ -207,6 +207,9 @@ def query_transcripts(data):
         for line in data:
             line.update(ensembldb.query_transcripts(line['Ensembl_gene_id']))
 
+            if len(line['Gene_description']) > 0:
+                line['Gene_description'] = '%s:%s' % (line['HGNC_symbol'], line['Gene_description'])
+
             yield line
 
 def get_transcript(start, end, ensembl_gene_id=None, hgnc_id=None):
@@ -466,7 +469,7 @@ def query_omim(data):
 
             phenotypic_disease_model = omim.parse_phenotypic_disease_model(entry['phenotypes'])
 
-            if len(phenotypic_disease_model) > 0:
+            if phenotypic_disease_model != None:
                 line['Phenotypic_disease_model'] = '%s:%s' % (line['HGNC_symbol'], phenotypic_disease_model)
 
             # add OMIM morbid
