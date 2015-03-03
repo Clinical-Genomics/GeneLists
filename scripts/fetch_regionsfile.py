@@ -23,12 +23,28 @@ def fill_line(row):
     Returns: a tab delimited string
 
     """
+
     # sanity check
     if row['Gene_start'] > row['Gene_stop']:
         row['Gene_start'], row['Gene_stop'] = row['Gene_stop'], row['Gene_start']
 
     line = [ str(row.get(column_header, '')) for column_header in header ]
     return '\t'.join(line)
+
+def query_ensembl(ensembl_gene_id=None):
+    """Queries EnsEMBL to get all genes with transcripts
+
+    Yields:
+        dict: with added ensembl information
+    """
+    with Ensembl() as ensembldb:
+        data = [ ensembldb.query_transcripts(ensembl_gene_id) ]
+        for line in data:
+
+            if len(line['Gene_description']) > 0:
+                line['Gene_description'] = '%s:%s' % (line['HGNC_symbol'], line['Gene_description'])
+
+            yield line
 
 def query_omim(data):
     """Queries OMIM to fill in the inheritance models
@@ -80,11 +96,10 @@ def main(argv):
     parser.add_argument('repodir', default=None, help='The path to the git repo where the research list will be stored. Used to retrieve tag/version number')
     args = parser.parse_args(argv)
 
-    with Ensembl() as ensembldb:
-        transcripts = \
-            query_omim(
-            ensembldb.query_transcripts()
-        )
+    transcripts = \
+        query_omim(
+        query_ensembl()
+    )
 
     for line in get_lines(transcripts, args.repodir):
         print(line)

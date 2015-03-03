@@ -23,7 +23,7 @@ class Ensembl:
             gene_id: an ensembl gene id e.g. ENS00000124433
         Returns:
             dict: with keys Ensembl_transcript_to_refseq_transcript and Gene_description
-                  Ensembl_transcript_to_refseq_transcript is formatted like this: ensembl_id:ensembl_transcript_id>ref_seq_id/ref_seq_id|
+                  Ensembl_transcript_to_refseq_transcript is formatted like this: HGNC_symbol:ensembl_transcript_id>ref_seq_id/ref_seq_id|
 
         """
         cur = self.conn.cursor(pymysql.cursors.DictCursor)
@@ -88,7 +88,7 @@ class Ensembl:
                     if len(transcripts) == 0:
                         p(Ensembl_gene_id + ' has no transcripts!')
 
-                    line['Ensembl_transcript_to_refseq_transcript'] = '%s:%s' % (Ensembl_gene_id, '|'.join(_join_refseqs(transcripts)))
+                    line['Ensembl_transcript_to_refseq_transcript'] = '%s:%s' % (row['HGNC_symbol'], '|'.join(_join_refseqs(transcripts)))
                     yield line
 
                     # reset
@@ -108,7 +108,7 @@ class Ensembl:
                 transcripts[ row['Transcript_ID'] ].append(row['RefSeq_ID'])
 
             # yield last one
-            line['Ensembl_transcript_to_refseq_transcript'] = '%s:%s' % (Ensembl_gene_id, '|'.join(_join_refseqs(transcripts)))
+            line['Ensembl_transcript_to_refseq_transcript'] = '%s:%s' % (row['HGNC_symbol'], '|'.join(_join_refseqs(transcripts)))
             yield line
 
         """
