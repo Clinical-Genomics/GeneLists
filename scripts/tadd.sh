@@ -18,7 +18,8 @@ TAG=$2
 OLD_WD=$(pwd)
 
 # get current software version and branch of generated software repo
-cd $(dirname $(readlink -n -m $0))
+SCRIPT_PATH=$(dirname $(readlink -nm $0))
+cd $SCRIPT_PATH
 VERSION=$(git describe | tail -1 2> /dev/null)
 BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
 cd $OLD_WD
@@ -41,8 +42,11 @@ git push
 git push --tags origin
 
 # update clinicalgenomics.se
-python update_cg.py $(dirname $(dirname $GENELIST))/cust00[1234]/cust*.txt > ~/git/clinical-genomics.github.io/_pages/genelistanamn.md
+cd $SCRIPT_PATH/..
+python -m scripts.update_cg $(dirname $(dirname $(readlink -nm $GENELIST)))/cust00[1234]/cust*.txt > ~/git/clinical-genomics.github.io/_pages/namnpagenlistor.md
 cd ~/git/clinical-genomics.github.io
+git pull
 git add _pages/genelistanamn.md
 git commit -m "Update to $(basename $GENELIST)"
-git push
+#git push
+cd $OLD_WD

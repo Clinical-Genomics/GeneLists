@@ -38,15 +38,13 @@ def main(argv):
             'Databas': database
         }
 
-    print("""
----
+    print("""---
 layout: base
 permalink: /namnpagenlistor/
 title: Namn på genlistor
 ---
 
 # Namn på genlistor
-
 """)
 
     keys = ['Databas', 'Beskrivning', 'Version', 'Datum']
