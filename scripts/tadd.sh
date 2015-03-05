@@ -46,7 +46,7 @@ cd $SCRIPT_PATH/..
 python -m scripts.update_cg $(dirname $(dirname $(readlink -nm $GENELIST)))/cust00[1234]/cust*.txt > ~/git/clinical-genomics.github.io/_pages/namnpagenlistor.md
 cd ~/git/clinical-genomics.github.io
 git pull
-git add _pages/genelistanamn.md
+git add _pages/namnpagenlistor.md
 git commit -m "Update to $(basename $GENELIST)"
 #git push
 cd $OLD_WD
