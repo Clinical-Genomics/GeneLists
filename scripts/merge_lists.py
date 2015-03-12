@@ -6,7 +6,6 @@ import sys
 import argparse
 import subprocess
 import os
-from datetime import datetime
 
 from .git import getgitlastmoddate, getgittag
 from .acronyms import Acronyms
