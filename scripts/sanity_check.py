@@ -6,14 +6,13 @@ import sys
 import argparse
 import re
 
-gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_ID', 'Disease_group_pathway', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Genetic_disease_model', 'OMIM_gene', 'OMIM_morbid', 'Gene_locus', 'Clinical_db_genome_build', 'UniProt_id', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Reduced_penetrance', 'Clinical_db_gene_annotation', 'Disease_associated_transcript']
+gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_symbol', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Phenotypic_disease_model', 'OMIM_morbid', 'Gene_locus', 'UniProt_id', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Reduced_penetrance', 'Clinical_db_gene_annotation', 'Disease_associated_transcript', 'Ensembl_transcript_to_refseq_transcript', 'Gene_description']
 mandatory_fields = {
     'Clinical_db_gene_annotation': re.compile(r'.+'),
-    'Clinical_db_genome_build':re.compile(r'.+'),
     'Chromosome': re.compile(r'([\dXY]|MT)+'),
     'Gene_start': re.compile(r'\d+'),
     'Gene_stop': re.compile(r'\d+'),
-    'HGNC_ID': re.compile(r'.+'),
+    'HGNC_symbol': re.compile(r'.+'),
 #    'Genetic_disease_model': re.compile(r'.+'),
     'Gene_locus': re.compile(r'.+'),
     'Ensembl_gene_id': re.compile(r'ENSG\d{11}'),
@@ -135,7 +134,7 @@ def check_coordinates(lines):
         yield line
 
 def check_duplicates(lines):
-    """Check for duplicates based on HGNC_ID, EnsEMBL_gene_id and coordinates
+    """Check for duplicates based on HGNC_symbol, EnsEMBL_gene_id and coordinates
 
     Args:
         lines (list of dicts): each dict contains a dict with gl_header as keys
@@ -143,7 +142,7 @@ def check_duplicates(lines):
     yields: a line of the lines
     """
     fields = {
-        'HGNC_ID': {}, # HGNC_ID: line nr
+        'HGNC_symbol': {}, # HGNC_symbol: line nr
         'Ensembl_gene_id': {},
     }
     Gene_start = {}
@@ -223,12 +222,12 @@ def main(argv):
     # - chromosome
     # - gene_start
     # - gene_stop
-    # - HGNC_ID
+    # - HGNC_symbol
     # - Genetic_model
     # - Gene_locus
     # - Ensembl_gene_id
     # length of coordinates should be above zero
-    # no duplicates based on coordinates tuple, EnsEMBL gene ID or HGNC ID
+    # no duplicates based on coordinates tuple, EnsEMBL gene ID or HGNC symbol
     [ line for line in \
         check_duplicates(
         check_coordinates(
