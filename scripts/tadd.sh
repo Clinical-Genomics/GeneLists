@@ -8,17 +8,33 @@
 set -e
 
 if [[ ${#@} < 2 ]]; then
-    echo "USAGE: $0 genelist repo tag"
-    echo "	$0 ~/bitbucket/GeneList/cust000 5.1"
+    echo "USAGE: $0 genelist repo --minor|major"
+    echo "	$0 ~/bitbucket/GeneList/cust000 --minor"
     exit 1
 fi
 
 GENELIST=$1
-TAG=$2
+TAG_BUMP=$2
 OLD_WD=$(pwd)
 
-# get current software version and branch of generated software repo
 SCRIPT_PATH=$(dirname $(readlink -nm $0))
+GL_PATH=$(dirname $GENELIST)
+GENELIST_NAME=$(basename $GENELIST)
+
+# create the tag
+cd $GL_PATH
+TAG=$(git describe | tail -1 2> /dev/null)
+case "$TAG_BUMP" in
+    --minor) TAG=$(python -c "print('%.1f' % round(${TAG}+0.1, 2))")
+        ;;
+    --major) TAG=$(python -c "print('%.1f' % round(${TAG}+1.0))")
+        ;;
+    *) >&2 echo "Invalid option"
+       exit 1
+       ;;
+esac
+
+# get current software version and branch of generated software repo
 cd $SCRIPT_PATH
 VERSION=$(git describe | tail -1 2> /dev/null)
 BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
@@ -29,12 +45,22 @@ read -p "Commit message: " MSG
 
 cd "$(dirname $GENELIST)"
 
+# get all panels
+PANELS=( $(python $SCRIPT_PATH/get_panels.py $GENELIST) )
+# add a header to the commited gene list
+TMP_GL=$(mktemp)
+for PANEL in "${PANELS[@]}"; do
+    COMPLETE_NAME=$(grep -h ^${PANEL} $GL_PATH/LISTS)
+    COMPLETE_NAME=${COMPLETE_NAME#*: }
+    echo "##Database=<ID=${GENELIST_NAME},Version=${TAG},Date=$(date +'%Y%m%d'),Acronym=${PANEL},Complete_name=${COMPLETE_NAME},Clinical_db_genome_build=GRCh37.p13" | cat - ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST} 
+done
+
 # add the version to a changelog
 DATE=$(date +"%y/%m/%d %H:%M")
 echo "$DATE :: Generated with version $BRANCH:$VERSION" > CHANGELOG
 
 # commit + tag
-git add "$(basename $GENELIST)"
+git add "$GENELIST_NAME"
 git add CHANGELOG
 git commit -m "$MSG"
 git tag -a "$TAG" -m "$MSG"

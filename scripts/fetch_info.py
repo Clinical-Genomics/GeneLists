@@ -496,7 +496,6 @@ def main(argv):
     parser.add_argument('--errors-only', default=False, action='store_true', dest='errors_only', help='if set, will not output the gene list, but only the conflict messages from EnsEMBLdb.')
     parser.add_argument('--download-mim2gene', default=False, action='store_true', dest='download_mim2gene', help='if set, will download a new version of the mim2gene.txt file, used to check the OMIM type')
     parser.add_argument('--mim2gene', default=False, action='store_true', dest='mim2gene', help='if set, will try to resolve an HGNC symbol with the help of mim2gene.txt')
-    parser.add_argument('--genome-build', default=None, dest='genome_build', help='Sets the genome release version, e.g. GRCh37')
     args = parser.parse_args(argv)
 
     global verbose
@@ -541,18 +540,12 @@ def main(argv):
     # clean up the input
     clean_data = cleanup(dict_data)
 
-    # add genome build, if any
-    if args.genome_build is not None:
-        genome_data = add_genome_build(clean_data, args.genome_build)
-    else:
-        genome_data = clean_data
-
     fixed_data = None
     if args.zero_based:
         # fix 0-based coordinates to be 1-based
-        fixed_data = zero2one(genome_data)
+        fixed_data = zero2one(clean_data)
     else:
-        fixed_data = genome_data
+        fixed_data = clean_data
 
     # add the mim2gene alias to HGNC_symbol
     # remove non-genes based on mim2gene.txt
