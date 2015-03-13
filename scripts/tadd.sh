@@ -41,32 +41,40 @@ BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD
 cd $OLD_WD
 
 # say something
-#read -p "Commit message: " MSG
-MSG='Upgrade to MIP2.0'
+read -p "Commit message: " MSG
 
 cd "$(dirname $GENELIST)"
 
 # get all panels
 PANELS=( $(python $SCRIPT_PATH/get_panels.py $GENELIST) )
 echo ${PANELS[@]}
-# add a header to the commited gene list
 TMP_GL=$(mktemp)
+
+# remove the previous meta data headers
+grep -v '^##' ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST}
+
+# add a header to the commited gene list
 for PANEL in "${PANELS[@]}"; do
     if [[ "$PANEL" == 'FullList' ]]; then
         continue
     fi
-    COMPLETE_NAME=$(grep -h ^${PANEL} $GL_PATH/LISTS | cat) # we cat to avoid a positive exit code
+
+    # we cat to avoid a positive exit code
+    COMPLETE_NAME=$(grep -h "^${PANEL}:" $GL_PATH/LISTS | cat)
     COMPLETE_NAME=${COMPLETE_NAME#*: }
+
     if [[ ! -z "$COMPLETE_NAME" ]]; then
-        echo "##Database=<ID=${GENELIST_NAME},Version=${TAG},Date=$(date +'%Y%m%d'),Acronym=${PANEL},Complete_name=${COMPLETE_NAME},Clinical_db_genome_build=GRCh37.p13" | cat - ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST} 
+        echo "##Database=<ID=${GENELIST_NAME},Version=${TAG},Date=$(date +'%Y%m%d'),Acronym=${PANEL},Complete_name=${COMPLETE_NAME},Clinical_db_genome_build=GRCh37.p13" | cat - ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST}
     else
-        echo "##Database=<ID=${GENELIST_NAME},Version=${TAG},Date=$(date +'%Y%m%d'),Acronym=${PANEL},Clinical_db_genome_build=GRCh37.p13" | cat - ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST} 
+        echo "##Database=<ID=${GENELIST_NAME},Version=${TAG},Date=$(date +'%Y%m%d'),Acronym=${PANEL},Clinical_db_genome_build=GRCh37.p13" | cat - ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST}
     fi
 done
 
 # add the version to a changelog
 DATE=$(date +"%y/%m/%d %H:%M")
 echo "$DATE :: Generated with version $BRANCH:$VERSION" > CHANGELOG
+
+exit
 
 # commit + tag
 git add "$GENELIST_NAME"
