@@ -14,7 +14,7 @@ mandatory_fields = {
     'Gene_stop': re.compile(r'\d+'),
     'HGNC_symbol': re.compile(r'.+'),
 #    'Genetic_disease_model': re.compile(r'.+'),
-    'Gene_locus': re.compile(r'.+'),
+#    'Gene_locus': re.compile(r'.+'),
     'Ensembl_gene_id': re.compile(r'ENSG\d{11}'),
 }
 
