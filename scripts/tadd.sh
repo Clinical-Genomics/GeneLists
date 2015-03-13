@@ -41,18 +41,27 @@ BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD
 cd $OLD_WD
 
 # say something
-read -p "Commit message: " MSG
+#read -p "Commit message: " MSG
+MSG='Upgrade to MIP2.0'
 
 cd "$(dirname $GENELIST)"
 
 # get all panels
 PANELS=( $(python $SCRIPT_PATH/get_panels.py $GENELIST) )
+echo ${PANELS[@]}
 # add a header to the commited gene list
 TMP_GL=$(mktemp)
 for PANEL in "${PANELS[@]}"; do
-    COMPLETE_NAME=$(grep -h ^${PANEL} $GL_PATH/LISTS)
+    if [[ "$PANEL" == 'FullList' ]]; then
+        continue
+    fi
+    COMPLETE_NAME=$(grep -h ^${PANEL} $GL_PATH/LISTS | cat) # we cat to avoid a positive exit code
     COMPLETE_NAME=${COMPLETE_NAME#*: }
-    echo "##Database=<ID=${GENELIST_NAME},Version=${TAG},Date=$(date +'%Y%m%d'),Acronym=${PANEL},Complete_name=${COMPLETE_NAME},Clinical_db_genome_build=GRCh37.p13" | cat - ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST} 
+    if [[ ! -z "$COMPLETE_NAME" ]]; then
+        echo "##Database=<ID=${GENELIST_NAME},Version=${TAG},Date=$(date +'%Y%m%d'),Acronym=${PANEL},Complete_name=${COMPLETE_NAME},Clinical_db_genome_build=GRCh37.p13" | cat - ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST} 
+    else
+        echo "##Database=<ID=${GENELIST_NAME},Version=${TAG},Date=$(date +'%Y%m%d'),Acronym=${PANEL},Clinical_db_genome_build=GRCh37.p13" | cat - ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST} 
+    fi
 done
 
 # add the version to a changelog
