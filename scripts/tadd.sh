@@ -23,7 +23,7 @@ GENELIST_NAME=$(basename $GENELIST)
 
 # create the tag
 cd $GL_PATH
-TAG=$(git describe | tail -1 2> /dev/null)
+TAG=$(git describe --abbrev=0 | tail -1 2> /dev/null)
 case "$TAG_BUMP" in
     --minor) TAG=$(python -c "print('%.1f' % round(${TAG}+0.1, 2))")
         ;;
