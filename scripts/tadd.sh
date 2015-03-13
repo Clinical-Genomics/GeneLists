@@ -74,8 +74,6 @@ done
 DATE=$(date +"%y/%m/%d %H:%M")
 echo "$DATE :: Generated with version $BRANCH:$VERSION" > CHANGELOG
 
-exit
-
 # commit + tag
 git add "$GENELIST_NAME"
 git add CHANGELOG
