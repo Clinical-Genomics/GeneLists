@@ -12,27 +12,6 @@ from datetime import datetime
 from .git import getgitlastmoddate, getgittag
 from .acronyms import Acronyms
 
-def panels_2_html(panels, acronyms):
-    """Converts a list of panel acronyms to a HTML list.
-    Will add the description of the panel to the list as well.
-
-    Args:
-        panels (list): a list of panel acronyms
-
-    Returns: a HTML formatted string.
-
-    """
-    if len(panels) == 0:
-        return ''
-
-    li_panels = []
-    for panel in panels:
-        descr = acronyms[panel]
-        panel_descr = panel if len(descr) == 0 else ': '.join([panel, descr])
-        li_panels.append('<li>%s</li>' % panel_descr)
-
-    return '<ul>%s</ul>' % ''.join(li_panels)
-
 def main(argv):
     parser = argparse.ArgumentParser(description='Update clinicalgenomics.se with gene list names and versions')
     parser.add_argument('infiles', nargs="+", type=argparse.FileType('r'), help='')
@@ -41,7 +20,7 @@ def main(argv):
     acronyms = Acronyms(os.path.dirname(os.path.dirname(os.path.realpath(args.infiles[0].name))))
     re_gl_name = re.compile(r'cust...-(.*).txt')
 
-    versions = {} # Database => { 'Version': Version, 'Datum': Date, 'Beskrivning': description, 'Databas': database acronym}
+    versions = {} # Database => { 'Version': Version, 'Datum': Date, 'Beskrivning': description, 'Databas': database acronym, 'Panels': panels}
     for infile in args.infiles:
 
         # get the database name from the filename
@@ -53,14 +32,12 @@ def main(argv):
         version = getgittag(infile.name, date=mod_date) # get version on that date
         full_name = acronyms[database]
         panels = acronyms.get_panels_of(database)
-        panels = '' if len(panels) == 1 else panels_2_html(panels, acronyms)
-        if len(panels):
-            panels = '<br />' + panels
         versions[database] = {
             'Version': version,
             'Datum': mod_date.partition(' ')[0],
-            'Beskrivning': full_name + panels,
+            'Beskrivning': full_name,
             'Databas': database,
+            'Panels': panels
         }
 
     print("""---
@@ -73,10 +50,19 @@ title: Namn på genlistor
 """)
 
     keys = ['Databas', 'Beskrivning', 'Version', 'Datum']
-    print('|%s|' % '|'.join(keys))
-    print('|%s' % ('---|' * len(keys)))
     for database in sorted(versions.keys()):
+        print('|%s|' % '|'.join(keys))
+        print('|%s' % ('---|' * len(keys)))
         print('|%s|' % '|'.join([ versions[database][key] for key in keys ]))
+
+        if len(versions[database]['Panels']) > 1:
+            print()
+            print('Panels:')
+            for panel in versions[database]['Panels']:
+                descr = acronyms[panel]
+                panel_descr = panel if len(descr) == 0 else ': '.join([panel, descr])
+                print('- %s' % panel_descr)
+        print()
 
 if __name__ == '__main__':
     main(sys.argv[1:])
