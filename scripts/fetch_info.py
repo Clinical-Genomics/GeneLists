@@ -98,7 +98,7 @@ def cache_mim2gene(mim2gene_file=os.path.dirname(os.path.abspath(__file__))+os.p
     mim2gene_fh = open(mim2gene_file, 'r')
     lines = ( line.strip() for line in mim2gene_fh )
     for line in lines:
-        (file_omim_id, omim_type, gene_id, hgnc_symbol) = line.split("\t")
+        (file_omim_id, omim_type, gene_id, hgnc_symbol, ensEMBL_gene_id) = line.split("\t")
         if omim_type in ('gene', 'gene/phenotype') and hgnc_symbol != '-':
             symbol_of[file_omim_id] = hgnc_symbol
         type_of[hgnc_symbol] = omim_type
@@ -152,6 +152,7 @@ def query(data, try_hgnc_again=False):
                 if HGNC_ID_i == len(HGNC_IDs):
                     not_found_id = HGNC_ID if len(HGNC_IDs) == 1 else HGNC_IDs
                     p("Not found: %s %s" % (not_found_id, cond_values))
+                    yield line # yield the line without EnsEMBL information
                 if not try_hgnc_again: break
             elif len(rs) > 1:
                 if HGNC_ID_i > 1:
