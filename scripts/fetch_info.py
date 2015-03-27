@@ -160,6 +160,7 @@ def query(data, try_hgnc_again=False):
                 if HGNC_symbol_i == len(HGNC_symbols):
                     not_found_id = HGNC_symbol if len(HGNC_symbols) == 1 else HGNC_symbols
                     p("Not found: %s %s" % (not_found_id, cond_values))
+                    yield line # evenif we don't find an entry for it on ensEMBL
                 if not try_hgnc_again: break
             elif len(rs) > 1:
                 if HGNC_symbol_i > 1:
