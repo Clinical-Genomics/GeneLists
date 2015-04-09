@@ -82,14 +82,15 @@ class OMIM(object):
 
     return url, params
 
-  def parse_phenotypic_disease_model(self, phenotypes):
+  def parse_phenotypic_disease_models(self, phenotypes):
     """Compose Phenotypic_disease_model entry based on the inheritance models of a gene.
     Such entry might look like: 614096>AR|615889>AR
 
     Args:
         phenotypes (list of dicts): each dict represents a phenotype. This is the 'phenotypes' key in the data returned from OMIM
 
-    Returns: TODO
+    Returns
+        dict of lists: [ phenotype_mim_number: [ inheritance_model, inheritance_model, ...] ]
 
     """
     TERMS_MAPPER = {
@@ -103,7 +104,7 @@ class OMIM(object):
       'Isolated cases',
     ]
 
-    phenotypic_disease_model = []
+    phenotypic_disease_model = {}
     models = set()
     for phenotype in phenotypes:
       if phenotype['inheritance'] is not None:
@@ -111,19 +112,24 @@ class OMIM(object):
         models = models.difference(TERMS_BLACKLIST) # remove blacklisted terms
         models = set([TERMS_MAPPER.get(model_human, model_human) for model_human in models]) # rename them if possible
 
-        phenotypic_disease_model.append('%s>%s' % (phenotype['phenotype_mim_number'], '/'.join(models)))
-      else:
-        if (phenotype['phenotype_mim_number'] is not None):
-          phenotypic_disease_model.append(str(phenotype['phenotype_mim_number']))
+      phenotypic_disease_model[ phenotype['phenotype_mim_number'] ] = list(models) if len(models) else None
 
-    if len(phenotypic_disease_model) == 0:
-      return None
-    return '|'.join(phenotypic_disease_model)
+    return phenotypic_disease_model
 
   def gene(self, hgnc_symbol):
-    entry = self.search_gene(hgnc_symbol)
+    entries = self.search_gene(hgnc_symbol)
 
-    return format_entry(entry)
+    # don't check further if we don't have anything
+    if not entries:
+      return format_entry({})
+
+    for entry in entries:
+      if 'geneMap' in entry['entry']:
+        if 'phenotypeMapList' in entry['entry']['geneMap']:
+          return format_entry(entry['entry'])
+
+    # no phenotypes found, return something
+    return format_entry(entries[0]['entry'])
 
   def search_gene(self, hgnc_symbol, include=('geneMap', 'dates')):
     """Search for MIM number for a HGNC approved symbol.
@@ -133,7 +139,7 @@ class OMIM(object):
       include (list, optional): additional sections to include
 
     Returns:
-      dict: first matching entry in the results
+      list: of dicts. Each dict contains the response for one entry.
     """
     url, params = self.base('entry/search')
 
@@ -167,9 +173,9 @@ class OMIM(object):
     entries = data['omim']['searchResponse']['entryList']
 
     if entries:
-      return entries[0]['entry']
+      return entries
     else:
-      return {}
+      return []
 
   def clinical_synopsis(self, mim, include=('clinicalSynopsis',),
                         exclude=None):

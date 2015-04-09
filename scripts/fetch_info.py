@@ -206,10 +206,12 @@ def query_transcripts(data):
 
     with Ensembl() as ensembldb:
         for line in data:
-            line.update(ensembldb.query_transcripts(line['Ensembl_gene_id']))
+            transcripts = ensembldb.query_transcripts(line['Ensembl_gene_id'])
+            if transcripts is not None:
+                line.update(transcripts)
 
-            if len(line['Gene_description']) > 0:
-                line['Gene_description'] = '%s:%s' % (line['HGNC_symbol'], line['Gene_description'])
+                if len(line['Gene_description']) > 0:
+                    line['Gene_description'] = '%s:%s' % (line['HGNC_symbol'], line['Gene_description'])
 
             yield line
 
@@ -468,10 +470,21 @@ def query_omim(data):
         if 'HGNC_symbol' in line:
             entry = omim.gene(line['HGNC_symbol'])
 
-            phenotypic_disease_model = omim.parse_phenotypic_disease_model(entry['phenotypes'])
+            phenotypic_disease_models = omim.parse_phenotypic_disease_models(entry['phenotypes'])
 
-            if phenotypic_disease_model != None:
-                line['Phenotypic_disease_model'] = '%s:%s' % (line['HGNC_symbol'], phenotypic_disease_model)
+            # extract the inheritance model
+            line_phenotypic_disease_models = []
+            inheritance_model = line['Phenotypic_disease_model'].split('>')[-1]
+            if len(phenotypic_disease_models) == 0:
+                line_phenotypic_disease_models.append('>%s' % inheritance_model)
+            else:
+                for omim_number, inheritance_models in phenotypic_disease_models.items():
+                    line_phenotypic_disease_models.append('%s>%s' % ( \
+                        omim_number if omim_number is not None else '',
+                        '/'.join(inheritance_models) if inheritance_models is not None else inheritance_model
+                        )
+                    )
+            line['Phenotypic_disease_model'] = '%s:%s' % (line['HGNC_symbol'], '|'.join(line_phenotypic_disease_models))
 
             # add OMIM morbid
             if entry['mim_number'] is not None:
