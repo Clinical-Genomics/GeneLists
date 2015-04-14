@@ -485,6 +485,8 @@ def query_omim(data):
                         )
                     )
             line['Phenotypic_disease_model'] = '%s:%s' % (line['HGNC_symbol'], '|'.join(line_phenotypic_disease_models))
+            if not inheritance_models:
+                p('MANUAL INHERITANCE: %s' % line['Phenotypic_disease_model'])
 
             # add OMIM morbid
             if entry['mim_number'] is not None:
