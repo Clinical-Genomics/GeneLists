@@ -31,12 +31,11 @@ def main(argv):
             line = line.split("\t")
             if len(line) < 21: continue # crude way of omitting non-gene lists
             hgnc_id = line[3].strip()
-            ensEMBLid = line[17].strip()
-            red_pen = line[19].strip()
-            line_databases = line[20].strip().split(',')
-            dis_ass_trans = ''
-            if len(line) == 22:
-                dis_ass_trans = line[21].strip()
+            phenotypic_disease_model = line[10].strip() # keep manual annotations
+            ensEMBLid = line[14].strip()
+            red_pen = line[16].strip()
+            line_databases = line[17].strip().split(',')
+            dis_ass_trans = line[18].strip() 
 
             # skip if we are whitelisting dbs
             if len(databases):
@@ -56,6 +55,7 @@ def main(argv):
             data[hgnc_id]['Databases'] += line_databases
             data[hgnc_id]['red_pen'] = red_pen
             data[hgnc_id]['dis_ass_trans'] = dis_ass_trans
+            data[hgnc_id]['Phenotypic_disease_model'] = phenotypic_disease_model
 
             # fill versions dict
             for database in line_databases:
@@ -69,7 +69,7 @@ def main(argv):
         for database, version_date in database_version.items():
             print('##Database=<ID=%s,Version=%s,Date=%s,Acronym=%s,Complete_name=%s,Clinical_db_genome_build=GRCh37.p13' % (os.path.basename(filename), version_date['Version'], version_date['Date'], database, version_date['Fullname']))
 
-    print('HGNC_symbol	Ensembl_gene_id	Clinical_db_gene_annotation	Reduced_penetrance	Disease_associated_transcript')
+    print('HGNC_symbol	Ensembl_gene_id	Clinical_db_gene_annotation	Reduced_penetrance	Disease_associated_transcript	Phenotypic_disease_model')
     for line in data.values():
         line['Databases'].append('FullList')
         line_dbs = ','.join(list(set(line['Databases'])))
@@ -79,7 +79,7 @@ def main(argv):
         else:
             dis_ass_trans = line['dis_ass_trans']
         for ensEMBLid in set(line['EnsEMBLid']):
-            print('%s\t%s\t%s\t%s\t%s' % (line['HGNC_symbol'], ensEMBLid, line_dbs, line['red_pen'], dis_ass_trans))
+            print('%s\t%s\t%s\t%s\t%s\t%s' % (line['HGNC_symbol'], ensEMBLid, line_dbs, line['red_pen'], dis_ass_trans, line['Phenotypic_disease_model']))
 
 if __name__ == '__main__':
     main(sys.argv[1:])
