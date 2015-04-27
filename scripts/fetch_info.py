@@ -481,9 +481,14 @@ def query_omim(data):
                 line_phenotypic_disease_models.append('>%s' % inheritance_model)
             else:
                 for omim_number, inheritance_models in phenotypic_disease_models.items():
-                    line_phenotypic_disease_models.append('%s>%s' % ( \
+                    inheritance_models_str = ''
+                    if inheritance_models is not None:
+                        inheritance_models_str = '>' + '/'.join(inheritance_models) 
+                    elif len(inheritance_model) > 0:
+                        inheritance_models_str = '>' + inheritance_model
+                    line_phenotypic_disease_models.append('%s%s' % ( \
                         omim_number if omim_number is not None else '',
-                        '/'.join(inheritance_models) if inheritance_models is not None else inheritance_model
+                        inheritance_models_str
                         )
                     )
             line['Phenotypic_disease_model'] = '%s:%s' % (line['HGNC_symbol'], '|'.join(line_phenotypic_disease_models))
