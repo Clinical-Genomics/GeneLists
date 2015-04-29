@@ -6,6 +6,7 @@ import sys
 import argparse
 import subprocess
 import os
+import datetime
 
 from .git import getgitlastmoddate, getgittag
 from .acronyms import Acronyms
@@ -60,8 +61,9 @@ def main(argv):
             # fill versions dict
             for database in line_databases:
                 if database not in versions[infile.name]:
-                    version = getgittag(infile.name)
-                    mod_date = getgitlastmoddate(infile.name)
+                    full_mod_date = getgitlastmoddate(infile.name, '%c')
+                    mod_date = datetime.datetime.strptime(full_mod_date, '%c').strftime('%Y%m%d')
+                    version = getgittag(infile.name, full_mod_date)
                     full_name = acronyms[database]
                     versions[infile.name][database] = { 'Version': version, 'Date': mod_date, 'Fullname': full_name }
 
