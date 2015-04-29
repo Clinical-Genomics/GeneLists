@@ -474,26 +474,33 @@ def query_omim(data):
 
             # extract the inheritance model
             line_phenotypic_disease_models = []
-            inheritance_model = ''
-            if 'Phenotypic_disease_model' in line:
-                inheritance_model = line['Phenotypic_disease_model'].split('>')[-1]
-            if len(phenotypic_disease_models) == 0:
-                line_phenotypic_disease_models.append('>%s' % inheritance_model)
-            else:
-                for omim_number, inheritance_models in phenotypic_disease_models.items():
+
+            # get the manual annotaiton
+            manual_inheritance_model = ''
+            if 'Phenotypic_disease_model' in line and '>' in line['Phenotypic_disease_model']:
+                manual_inheritance_model = line['Phenotypic_disease_model'].split('>')[-1]
+
+            # if any inheritance models and omim numbers are present, use them!
+            for omim_number, inheritance_models in phenotypic_disease_models.items():
+
+                if omim_number is not None:
                     inheritance_models_str = ''
+
                     if inheritance_models is not None:
                         inheritance_models_str = '>' + '/'.join(inheritance_models) 
-                    elif len(inheritance_model) > 0:
-                        inheritance_models_str = '>' + inheritance_model
+                    elif len(manual_inheritance_model) > 0:
+                        inheritance_models_str = '>' + manual_inheritance_model
+
                     line_phenotypic_disease_models.append('%s%s' % ( \
-                        omim_number if omim_number is not None else '',
+                        omim_number,
                         inheritance_models_str
                         )
                     )
-            line['Phenotypic_disease_model'] = '%s:%s' % (line['HGNC_symbol'], '|'.join(line_phenotypic_disease_models))
-            if not inheritance_models:
-                p('MANUAL INHERITANCE: %s' % line['Phenotypic_disease_model'])
+
+            if len(line_phenotypic_disease_models) > 0:
+                line['Phenotypic_disease_model'] = '%s:%s' % (line['HGNC_symbol'], '|'.join(line_phenotypic_disease_models))
+                if not inheritance_models:
+                    p('MANUAL INHERITANCE: %s' % line['Phenotypic_disease_model'])
 
             # add OMIM morbid
             if entry['mim_number'] is not None:
