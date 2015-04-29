@@ -55,13 +55,11 @@ def main(argv):
         version = getgittag(infile.name, date=mod_date) # get version on that date
         full_name = acronyms[database]
         panels = acronyms.get_panels_of(database)
-        panels = '' if len(panels) == 1 else panels_2_html(panels, acronyms)
-        if len(panels) and len(full_name):
-            panels = '<br />' + panels
+        panels = full_name if len(panels) == 1 else panels_2_html(panels, acronyms)
         versions[database] = {
             'Version': version,
             'Datum': mod_date.partition(' ')[0],
-            'Beskrivning': full_name + panels,
+            'Beskrivning': panels,
             'Databas': database,
         }
 
