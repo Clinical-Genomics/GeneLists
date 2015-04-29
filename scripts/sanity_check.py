@@ -18,6 +18,13 @@ mandatory_fields = {
     'Ensembl_gene_id': re.compile(r'ENSG\d{11}'),
 }
 
+# holds regex's with forbidden chars per column
+forbidden_chars = {
+    # Can't have empty inheritance models:
+    # Fobidden: SYMBOL:>, SYMBOL:OMIM||, SYMBOL:OMIM>, SYMBOL:OMIM>AR|>
+    'Phenotypic_disease_model': re.compile(r'(:>|>$|:\d+>\||\|>)')
+}
+
 line_nr = 0 # hold on to the line nr
 warned = 0 # exit code
 
@@ -57,6 +64,21 @@ def inc_line_nr(lines):
     global line_nr
     for line in lines:
         line_nr += 1
+        yield line
+
+def check_forbidden_chars(lines):
+    """Checks the precense of forbidden chars
+
+    Args:
+        lines (list of dicts): each dict contains a dict with gl_header as keys
+
+    yields: a line of the lines
+
+    """
+    for line in lines:
+        for field, forbidden_re in forbidden_chars.items():
+            if re.search(forbidden_re, line[field]):
+                warn("'{}' ('{}') has a forbidden char combination '{}'".format(field, line[field], forbidden_re))
         yield line
 
 def check_delimiter(lines, delimiters=re.compile(r', '), whitelist_keys=[]):
@@ -232,12 +254,13 @@ def main(argv):
         check_duplicates(
         check_coordinates(
         check_mandatory_fields(
+        check_forbidden_chars(
         check_nr_fields(
         check_trimming(
         check_delimiter(
         inc_line_nr(
             dict_data
-        )))))))
+        ))))))))
     ]
 
     return warned
