@@ -482,7 +482,6 @@ def query_omim(data):
 
             # if any inheritance models and omim numbers are present, use them!
             for omim_number, inheritance_models in phenotypic_disease_models.items():
-
                 if omim_number is not None:
                     inheritance_models_str = ''
 
@@ -490,7 +489,7 @@ def query_omim(data):
                         inheritance_models_str = '>' + '/'.join(inheritance_models) 
                     elif len(manual_inheritance_model) > 0:
                         inheritance_models_str = '>' + manual_inheritance_model
-                        p('MANUAL INHERITANCE: %s' % line['Phenotypic_disease_model'])
+                        p('MANUAL INHERITANCE: %s>%s' % (omim_number, manual_inheritance_model))
 
                     line_phenotypic_disease_models.append('%s%s' % ( \
                         omim_number,
@@ -500,6 +499,8 @@ def query_omim(data):
 
             if len(line_phenotypic_disease_models) > 0:
                 line['Phenotypic_disease_model'] = '%s:%s' % (line['HGNC_symbol'], '|'.join(line_phenotypic_disease_models))
+            else:
+                line['Phenotypic_disease_model'] = ''
 
             # add OMIM morbid
             if entry['mim_number'] is not None:
