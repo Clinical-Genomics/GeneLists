@@ -26,6 +26,10 @@ for CUSTDIR in `ls -1 -d ${BITBUCKETDIR}/cust???`; do
         # skip cust000
         LISTFILENAME=`basename "${LIST}"`
         CUSTNAME=${LISTFILENAME%-*}
+        if [[ ${CUSTNAME} == 'cust000' ]]; then
+            log "Skipping ${LIST}"
+            continue
+        fi
 
         # validate
         log "python ${SCRIPTDIR}/../scripts/sanity_check.py ${LIST}"
