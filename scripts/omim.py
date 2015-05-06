@@ -4,6 +4,7 @@ from datetime import datetime
 
 import time
 import requests
+import requests_cache
 
 def format_entry(json_entry):
   """Extract interesting information from a single OMIM entry."""
@@ -64,6 +65,8 @@ class OMIM(object):
     self.base_url = 'http://api.europe.omim.org/api'
     self.format = response_format
     self.api_key = api_key
+
+    requests_cache.install_cache('omim_cache', backend='sqlite', expire_after=84600)
 
   def base(self, handler):
     """Compose url and universal params for any request handler.
@@ -155,6 +158,8 @@ class OMIM(object):
         try:
             retry = False
             res = requests.get(url, params=params)
+            if not res.from_cache:
+                sleep(0.25) # wait for 250ms as according to OMIM specs
         except Exception:
             retry = True
         #except TypeError:

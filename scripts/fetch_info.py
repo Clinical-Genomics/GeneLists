@@ -7,7 +7,6 @@ import pymysql
 import argparse
 import re
 import os
-from time import sleep
 from urllib.request import urlretrieve, Request, urlopen
 
 from .omim import OMIM
@@ -86,6 +85,7 @@ def resolve_ensembl_id(hgnc_id):
 
 symbol_of = {} # omim_id: hgnc_symbol
 type_of = {} # hgnc_symbol: type
+ensembl_gene_id_of = {} # hgnc_symbol: EnsEMBL_gene_id
 
 # TODO: djees, put this in a separate package so we don't have to rely on a global var
 def cache_mim2gene(mim2gene_file=os.path.dirname(os.path.abspath(__file__))+os.path.sep+'mim2gene.txt'):
@@ -100,9 +100,10 @@ def cache_mim2gene(mim2gene_file=os.path.dirname(os.path.abspath(__file__))+os.p
     mim2gene_fh = open(mim2gene_file, 'r')
     lines = ( line.strip() for line in mim2gene_fh )
     for line in lines:
-        (file_omim_id, omim_type, gene_id, hgnc_symbol) = line.split("\t")
+        (file_omim_id, omim_type, gene_id, hgnc_symbol, ensembl_gene_id) = line.split("\t")
         if omim_type in ('gene', 'gene/phenotype') and hgnc_symbol != '-':
             symbol_of[file_omim_id] = hgnc_symbol
+            ensembl_gene_id_of[file_omim_id] = ensembl_gene_id
         type_of[hgnc_symbol] = omim_type
 
 def resolve_gene(omim_id):
@@ -118,6 +119,21 @@ def resolve_gene(omim_id):
     if omim_id in symbol_of:
         return symbol_of[omim_id]
     return False
+
+def resolve_ensembl_gene_id(omim_id):
+    """Looks up the EnsEMBL gene id in the mim2gene.txt file. If found and the omim type is 'gene', return it
+
+    Args:
+        omim_id (int): the omim id
+
+    Returns: on omom id match, EnsEMBL gene id if type of gene or gene/phenotype otherwise False
+
+    """
+    global ensembl_gene_id_of
+    if omim_id in ensembl_gene_id_of and ensembl_gene_id_of[omim_id] != None and ensembl_gene_id_of[omim_id] != '-':
+        return ensembl_gene_id_of[omim_id]
+    return False
+
 
 def query(data, try_hgnc_again=False):
     """Queries EnsEMBL. Parameters are HGNC_symbol and/or Ensembl_gene_id, whatever is available. Data from EnsEMBLdb will overwrite the client data.
@@ -384,8 +400,11 @@ def add_mim2gene_alias(data):
         if 'OMIM_morbid' in line:
             OMIM_id  = line['OMIM_morbid']
             HGNC_symbol = resolve_gene(OMIM_id)
+            EnsEMBL_gene_id = resolve_ensembl_gene_id(OMIM_id)
             if HGNC_symbol != False and HGNC_symbol not in HGNC_symbols:
                 HGNC_symbols.insert(0, HGNC_symbol)
+            if EnsEMBL_gene_id != False and 'Ensembl_gene_id' in line.keys() and line['Ensembl_gene_id'] != EnsEMBL_gene_id:
+                p("morbidmap '{}' differs from local '{}'".format(line['Ensembl_gene_id'], EnsEMBL_gene_id))
         line['HGNC_symbol'] = ','.join(HGNC_symbols)
         yield line
 
@@ -504,7 +523,7 @@ def query_omim(data):
 
             # add OMIM morbid
             if entry['mim_number'] is not None:
-                if 'OMIM_morbid' in line and len(line['OMIM_morbid']) > 0 and line['OMIM_morbid'] != entry['mim_number']:
+                if 'OMIM_morbid' in line and len(line['OMIM_morbid']) > 0 and str(line['OMIM_morbid']) != str(entry['mim_number']):
                     p('%s > %s client OMIM number differs from OMIM query' % (line['OMIM_morbid'], entry['mim_number']))
                 line['OMIM_morbid'] = '%s:%s' % (line['HGNC_symbol'], entry['mim_number'])
 
@@ -514,7 +533,6 @@ def query_omim(data):
                     p('%s > %s client Gene locus differs from OMIM query' % (line['Gene_locus'], entry['gene_location']))
                 line['Gene_locus'] = entry['gene_location']
 
-            sleep(0.25) # wait for 250ms as according to OMIM specs
         yield line
 
 def main(argv):

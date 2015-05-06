@@ -6,7 +6,7 @@ import sys
 import argparse
 import re
 
-omim_header=['Disease_trivial_name', 'HGNC_ID', 'OMIM_morbid', 'Gene_locus', 'Chromosome', 'Database']
+omim_header=['Disease_trivial_name', 'HGNC_symbol', 'OMIM_morbid', 'Gene_locus', 'Chromosome', 'Clinical_db_gene_annotation']
 
 def print_header(header=omim_header):
     """prints column headers
@@ -80,11 +80,11 @@ def add_chromosome_number(data):
             chromosome = re.compile('p|q').split(locus)[0]
         elif locus.startswith('Chr.'):
             chromosome = locus.replace('Chr.', '')
-            
+
         line.append(chromosome)
         yield line
 
-def add_database(data, database):
+def add_database(data, database='OMIM'):
     """TODO: Docstring for add_database.
 
     Args:
@@ -94,11 +94,6 @@ def add_database(data, database):
         list: with one extra column for the database
     """
 
-    if not database:
-        import time
-        database = 'OMIM-'
-        database += time.strftime("%y%m%d")
-
     for line in data:
         line.append(database)
         yield line
@@ -107,7 +102,7 @@ def main(argv):
     # set up the argparser
     parser = argparse.ArgumentParser(description='Creates a gene list from an OMIM morbid file')
     parser.add_argument('infile', type=argparse.FileType('r'), help='the OMIM morbid file with columns: phenotype, HGNC symbols, OMIM ID, gene locus')
-    parser.add_argument('-d', default=None, dest='database', help='The value for the database field. Defaults to "OMIM-" with the current date appended')
+    parser.add_argument('-d', default='OMIM', dest='database', help='The value for the database field. Defaults to "OMIM"')
     args = parser.parse_args(argv)
 
     omimfile = args.infile
