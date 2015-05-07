@@ -83,7 +83,7 @@ def resolve_ensembl_id(hgnc_id):
     except KeyError as ke:
         return False
 
-symbol_of = {} # omim_id: hgnc_symbol
+symbol_of = {} # omim_id: official hgnc_symbol
 type_of = {} # hgnc_symbol: type
 ensembl_gene_id_of = {} # hgnc_symbol: EnsEMBL_gene_id
 
@@ -107,12 +107,12 @@ def cache_mim2gene(mim2gene_file=os.path.dirname(os.path.abspath(__file__))+os.p
         type_of[hgnc_symbol] = omim_type
 
 def resolve_gene(omim_id):
-    """Looks up the omim_id in the mim2gene.txt file. If found and the omim type is 'gene', return the HGNC symbol
+    """Looks up the omim_id in the mim2gene.txt file. If found and the omim type is 'gene', return the official HGNC symbol
 
     Args:
         omim_id (int): the omim id
 
-    Returns: on omom id match, HGNC symbol if type of gene or gene/phenotype otherwise False
+    Returns: on omom id match, official HGNC symbol if type of gene or gene/phenotype otherwise False
 
     """
     global symbol_of
@@ -181,17 +181,6 @@ def query(data, try_hgnc_again=False):
             elif len(rs) > 1:
                 if HGNC_symbol_i > 1:
                     p("Took %s/%s" % (HGNC_symbol, HGNC_symbols))
-
-                # This happens when multiple genes are overlapping with a HGNC ID
-                # Query genenames.org to pick one EnsEMBL gene id
-#                gn_ensembl_id = resolve_ensembl_id(HGNC_symbol)
-#                if gn_ensembl_id:
-#                    matching_lines = [ line for line in rs if line['Ensembl_gene_id'] == gn_ensembl_id ] # yields one entry
-#                    if len(matching_lines) > 0:
-#                        p("Took %s" % gn_ensembl_id)
-#                        for entry in matching_lines:
-#                            yield merge_line(entry, line)
-#                        break
 
                 # we couldn't resolve this with genenames.org
                 if 'Chromosome' in line:
@@ -463,6 +452,23 @@ def remove_non_genes(data):
             if not yielded:
                 p('Removed: %s' % line)
 
+def put_official_hgnc_symbol(data):
+    """Resolve the official HGNC symbol and replace line['HGNC_symbol']
+
+    Args:
+        data (list of dicts): Inner dict represents a row in a gene list
+
+    Yields:
+        dict: now with the official HGNC_symbol
+
+    """
+    for line in data:
+        HGNC_symbol = resolve_gene(line['OMIM_morbid'])
+        if HGNC_symbol != False and line['HGNC_symbol'] != HGNC_symbol:
+            p('Took official symbol {} over {}'.format(HGNC_symbol, line['HGNC_symbol']))
+            line['HGNC_symbol'] = HGNC_symbol
+        yield line
+
 def download_mim2gene():
     """Download the mim2gene.txt file from omim ftp server. By default the file
     will be downloaded to the location of the script.
@@ -608,8 +614,11 @@ def main(argv):
     conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
     ensembld_data = query(reduced_data, try_hgnc_again=True)
 
+    # put the official HGNC symbol
+    hgnc_official_data = put_official_hgnc_symbol(ensembld_data)
+
     # aggregate transcripts
-    transcript_data = query_transcripts(ensembld_data)
+    transcript_data = query_transcripts(hgnc_official_data)
 
     # fill in the inheritance models
     omim_data = query_omim(transcript_data)
