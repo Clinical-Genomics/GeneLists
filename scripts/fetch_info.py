@@ -211,12 +211,13 @@ def query_transcripts(data):
 
     with Ensembl() as ensembldb:
         for line in data:
-            transcripts = ensembldb.query_transcripts(line['Ensembl_gene_id'])
-            if transcripts is not None:
-                line.update(transcripts)
+            if 'Ensembl_gene_id' in line.keys():
+                transcripts = ensembldb.query_transcripts(line['Ensembl_gene_id'])
+                if transcripts is not None:
+                    line.update(transcripts)
 
-                if len(line['Gene_description']) > 0:
-                    line['Gene_description'] = '%s:%s' % (line['HGNC_symbol'], line['Gene_description'])
+                    if len(line['Gene_description']) > 0:
+                        line['Gene_description'] = '%s:%s' % (line['HGNC_symbol'], line['Gene_description'])
 
             yield line
 
