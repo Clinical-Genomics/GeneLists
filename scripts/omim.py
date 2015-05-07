@@ -111,7 +111,21 @@ class OMIM(object):
     models = set()
     for phenotype in phenotypes:
       if phenotype['inheritance'] is not None:
-        models.update([model.strip('? ') for model in phenotype['inheritance'].split(';')])
+        for model in phenotype['inheritance']:
+          # exclude unconfirmed phenotypes
+          if model.startswith('?'): continue
+
+          # exclude unconfirmed inheritance models
+          if phenotype['phenotype'].startswith('?'): continue
+
+          # exclude susceptibility to phenotypes
+          if phenotype['phenotype'].startswith('{'): continue
+
+          # exclude 
+
+          # add a model
+          models.update(model)
+          
         models = models.difference(TERMS_BLACKLIST) # remove blacklisted terms
         models = set([TERMS_MAPPER.get(model_human, model_human) for model_human in models]) # rename them if possible
 

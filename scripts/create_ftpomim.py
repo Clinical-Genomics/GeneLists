@@ -98,6 +98,20 @@ def add_database(data, database='OMIM'):
         line.append(database)
         yield line
 
+def remove_unconfirmed(data):
+    """TODO: Docstring for remove_.
+
+    Args:
+        arg1 (TODO): TODO
+
+    Returns: TODO
+
+    """
+    for line in data:
+        if line[0].startswith('?'): continue
+        if line[0].startswith('{'): continue
+        yield line
+
 def main(argv):
     # set up the argparser
     parser = argparse.ArgumentParser(description='Creates a gene list from an OMIM morbid file')
@@ -110,14 +124,16 @@ def main(argv):
     raw_data = ( line.strip() for line in omimfile) # sluuuurp
     parsable_data = ( line.split("|") for line in raw_data )
 
-    uniq_data = remove_duplicates(parsable_data)
-    #hgnc_data = pick_hgnc_symbol(uniq_data)
-    chro_data = add_chromosome_number(uniq_data)
-    db_data = add_database(chro_data, database)
-
     print_header()
-    for line in db_data:
-        print_line(line)
+    [ print_line(line) for line in \
+      add_database(
+      add_chromosome_number(
+      remove_unconfirmed(
+      remove_duplicates(
+        parsable_data
+      ))), database)
+    ]
+    #hgnc_data = pick_hgnc_symbol(uniq_data)
 
 if __name__ == '__main__':
     main(sys.argv[1:])
