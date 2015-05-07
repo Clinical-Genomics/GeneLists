@@ -108,10 +108,12 @@ class OMIM(object):
     ]
 
     phenotypic_disease_model = {}
-    models = set()
     for phenotype in phenotypes:
+      models = set()
       if phenotype['inheritance'] is not None:
-        for model in phenotype['inheritance']:
+        for model in phenotype['inheritance'].split(';'):
+          model = model.strip(' ')
+
           # exclude unconfirmed phenotypes
           if model.startswith('?'): continue
 
@@ -121,11 +123,9 @@ class OMIM(object):
           # exclude susceptibility to phenotypes
           if phenotype['phenotype'].startswith('{'): continue
 
-          # exclude 
-
           # add a model
-          models.update(model)
-          
+          models.update([ model ])
+
         models = models.difference(TERMS_BLACKLIST) # remove blacklisted terms
         models = set([TERMS_MAPPER.get(model_human, model_human) for model_human in models]) # rename them if possible
 
