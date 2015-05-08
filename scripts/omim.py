@@ -85,7 +85,7 @@ class OMIM(object):
 
     return url, params
 
-  def parse_phenotypic_disease_models(self, phenotypes):
+  def parse_phenotypic_disease_models(self, phenotypes, chromosome=''):
     """Compose Phenotypic_disease_model entry based on the inheritance models of a gene.
     Such entry might look like: 614096>AR|615889>AR
 
@@ -103,8 +103,19 @@ class OMIM(object):
       'X-linked recessive': 'XR',
     }
 
+    TERMS_X = [
+      'X-linked dominant',
+      'X-linked recessive'
+    ]
+
+    TERMS_AUTOSOMAL = [
+      'Autosomal recessive',
+      'Autosomal dominant'
+    ]
+
     TERMS_BLACKLIST = [
       'Isolated cases',
+      'Mitochondrial'
     ]
 
     phenotypic_disease_model = {}
@@ -127,6 +138,8 @@ class OMIM(object):
           models.update([ model ])
 
         models = models.difference(TERMS_BLACKLIST) # remove blacklisted terms
+        # remove models thta don't belong on this chromosome
+        models = models.difference(TERMS_AUTOSOMAL) if chromosome.upper() == 'X' else models.difference(TERMS_X)
         models = set([TERMS_MAPPER.get(model_human, model_human) for model_human in models]) # rename them if possible
 
       phenotypic_disease_model[ phenotype['phenotype_mim_number'] ] = list(models) if len(models) else None

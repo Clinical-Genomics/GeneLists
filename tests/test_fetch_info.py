@@ -5,6 +5,11 @@ import unittest
 import pymysql
 from scripts import fetch_info
 
+# extra tests
+# test removal autosomal models X-linked gene: NDUFA1  300078  Xq23.3  X
+# test removal autosomal models Mitochondrial: SURF1   185620  9q23.3  9 
+# test removal unchecked and susceptible models: TACO1   612958  17q23.3 17 
+
 class TestFetchInfo(unittest.TestCase):
 
     def setUp(self):

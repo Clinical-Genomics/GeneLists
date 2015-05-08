@@ -495,16 +495,10 @@ def query_omim(data):
     if 'HGNC_symbol' in line:
       entry = omim.gene(line['HGNC_symbol'])
 
-      phenotypic_disease_models = omim.parse_phenotypic_disease_models(entry['phenotypes'])
+      phenotypic_disease_models = omim.parse_phenotypic_disease_models(entry['phenotypes'], line['Chromosome'])
 
       # extract the inheritance model
       line_phenotypic_disease_models = []
-
-      # get the manual annotaiton
-      manual_inheritance_model = ''
-      if 'Genetic_disease_model' in line:
-        # make sure we use the right delimiter
-        manual_inheritance_model = line['Genetic_disease_model'].replace(',','/')
 
       # if any inheritance models and omim numbers are present, use them!
       for omim_number, inheritance_models in phenotypic_disease_models.items():
@@ -513,12 +507,6 @@ def query_omim(data):
 
           if inheritance_models is not None:
             inheritance_models_str = '>' + '/'.join(inheritance_models)
-            for inheritance_model in inheritance_models:
-              if inheritance_model != manual_inheritance_model and len(manual_inheritance_model) > 0:
-                p('DIFF INHERITANCE MODEL: {} http://www.omim.org/entry/{} {} > {}'.format(line['HGNC_symbol'], omim_number, inheritance_model, manual_inheritance_model))
-          elif len(manual_inheritance_model) > 0:
-            inheritance_models_str = '>' + manual_inheritance_model
-            p('MANUAL INHERITANCE: %s>%s' % (omim_number, manual_inheritance_model))
 
           line_phenotypic_disease_models.append('%s%s' % ( \
             omim_number,
