@@ -6,7 +6,7 @@ import sys
 import argparse
 import re
 
-gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_symbol', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Phenotypic_disease_model', 'OMIM_morbid', 'Gene_locus', 'UniProt_id', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Reduced_penetrance', 'Clinical_db_gene_annotation', 'Disease_associated_transcript', 'Ensembl_transcript_to_refseq_transcript', 'Gene_description']
+gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_symbol', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Phenotypic_disease_model', 'OMIM_morbid', 'Gene_locus', 'UniProt_id', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Reduced_penetrance', 'Clinical_db_gene_annotation', 'Disease_associated_transcript', 'Ensembl_transcript_to_refseq_transcript', 'Gene_description', 'Genetic_disease_model']
 mandatory_fields = {
     'Clinical_db_gene_annotation': re.compile(r'.+'),
     'Chromosome': re.compile(r'([\dXY]|MT)+'),
@@ -21,7 +21,7 @@ mandatory_fields = {
 # holds regex's with forbidden chars per column
 forbidden_chars = {
     # Can't have empty inheritance models:
-    # Fobidden: SYMBOL:>, SYMBOL:OMIM||, SYMBOL:OMIM>, SYMBOL:OMIM>AR|>
+    # Forbidden: SYMBOL:>, SYMBOL:OMIM||, SYMBOL:OMIM>, SYMBOL:OMIM>AR|>
     'Phenotypic_disease_model': re.compile(r'(:>|>$|:\d+>\||\|>)')
 }
 
