@@ -521,7 +521,7 @@ def query_omim(data):
 
       # add OMIM morbid
       if entry['mim_number'] is not None:
-        if 'OMIM_morbid' in line and len(line['OMIM_morbid']) > 0 and str(line['OMIM_morbid']) != str(entry['mim_number']):
+        if 'OMIM_morbid' in line and len(line['OMIM_morbid']) > 0 and str(line['OMIM_morbid']) != line['HGNC_symbol'] + ':' + str(entry['mim_number']):
           p('%s > %s client OMIM number differs from OMIM query' % (line['OMIM_morbid'], entry['mim_number']))
         line['OMIM_morbid'] = '%s:%s' % (line['HGNC_symbol'], entry['mim_number'])
 
