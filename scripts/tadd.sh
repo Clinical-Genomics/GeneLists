@@ -25,9 +25,12 @@ GENELIST_NAME=$(basename $GENELIST)
 cd $GL_PATH
 TAG=$(git describe --abbrev=0 | tail -1 2> /dev/null)
 case "$TAG_BUMP" in
-    --minor) TAG=$(python -c "print('%.1f' % round(${TAG}+0.1, 2))")
+    --minor) 
+        MAJORPART=${TAG//.*}
+        MINORPART=${TAG//*.}
+        TAG=$(python -c "print('%d.%d' % (${MAJORPART}, ${MINORPART}+1))")
         ;;
-    --major) TAG=$(python -c "print('%.1f' % round(${TAG}+1.0))")
+    --major) TAG=$(python -c "import math; print('%.1f' % math.floor(${TAG}+1.0))")
         ;;
     *) >&2 echo "Invalid option"
        exit 1
