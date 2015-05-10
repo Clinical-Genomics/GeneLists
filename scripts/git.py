@@ -39,13 +39,16 @@ def getgitlastmoddate(filename, date_format='%Y%m%d'):
     Args:
         filename (str): the name of the gene list
 
-    Returns (str): return date (e.g. 20150225)
+    Returns (str|bool): return date (e.g. 20150225) or False no date
 
     """
     cwd = os.getcwd()
     os.chdir(os.path.dirname(filename))
     full_str_date = subprocess.check_output(['git', 'log', '-1', '--format=%ad', '--', filename]).decode('utf-8').strip()
     os.chdir(cwd)
+
+    if not full_str_date:
+        return False
 
     # Mon Feb 9 14:19:16 2015 +0100
     full_date = datetime.strptime(full_str_date.partition('+')[0], '%a %b %d %H:%M:%S %Y ')

@@ -36,7 +36,7 @@ esac
 
 # get current software version and branch of generated software repo
 cd $SCRIPT_PATH
-VERSION=$(git describe | tail -1 2> /dev/null)
+VERSION=$(git describe --tags | tail -1 2> /dev/null)
 BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
 cd $OLD_WD
 
@@ -89,5 +89,5 @@ cd ~/git/clinical-genomics.github.io
 git pull
 git add _pages/namnpagenlistor.md
 git commit -m "Update to $(basename $GENELIST)"
-#git push
+git push
 cd $OLD_WD
