@@ -9,7 +9,7 @@ set -e
 
 if [[ ${#@} < 2 ]]; then
     echo "USAGE: $0 genelist repo --minor|major"
-    echo "	$0 ~/bitbucket/GeneList/cust000 --minor"
+    echo "	$0 ~/git/cust000 --minor"
     exit 1
 fi
 
@@ -54,24 +54,23 @@ echo ${PANELS[@]}
 TMP_GL=$(mktemp)
 
 # remove the previous meta data headers
-grep -v '^##' ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST}
+if [[ ${GENELIST_NAME} != 'cust000-Clinical_master_list.txt' ]]; then
+    grep -v '^##' ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST}
 
-# add a header to the commited gene list
-for PANEL in "${PANELS[@]}"; do
-    if [[ "$PANEL" == 'FullList' ]]; then
-        continue
-    fi
+    # add a header to the commited gene list
+    for PANEL in "${PANELS[@]}"; do
 
-    # we cat to avoid a positive exit code
-    COMPLETE_NAME=$(grep -h "^${PANEL}:" $GL_PATH/LISTS | cat)
-    COMPLETE_NAME=${COMPLETE_NAME#*: }
+        # we cat to avoid a positive exit code
+        COMPLETE_NAME=$(grep -h "^${PANEL}:" $GL_PATH/LISTS | cat)
+        COMPLETE_NAME=${COMPLETE_NAME#*: }
 
-    if [[ ! -z "$COMPLETE_NAME" ]]; then
-        echo "##Database=<ID=${GENELIST_NAME},Version=${TAG},Date=$(date +'%Y%m%d'),Acronym=${PANEL},Complete_name=${COMPLETE_NAME},Clinical_db_genome_build=GRCh37.p13" | cat - ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST}
-    else
-        echo "##Database=<ID=${GENELIST_NAME},Version=${TAG},Date=$(date +'%Y%m%d'),Acronym=${PANEL},Clinical_db_genome_build=GRCh37.p13" | cat - ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST}
-    fi
-done
+        if [[ ! -z "$COMPLETE_NAME" ]]; then
+            echo "##Database=<ID=${GENELIST_NAME},Version=${TAG},Date=$(date +'%Y%m%d'),Acronym=${PANEL},Complete_name=${COMPLETE_NAME},Clinical_db_genome_build=GRCh37.p13" | cat - ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST}
+        else
+            echo "##Database=<ID=${GENELIST_NAME},Version=${TAG},Date=$(date +'%Y%m%d'),Acronym=${PANEL},Clinical_db_genome_build=GRCh37.p13" | cat - ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST}
+        fi
+    done
+fi
 
 # add the version to a changelog
 DATE=$(date +"%y/%m/%d %H:%M")
