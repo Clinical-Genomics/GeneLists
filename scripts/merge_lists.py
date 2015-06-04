@@ -37,6 +37,8 @@ def main(argv):
             red_pen = line[16].strip()
             line_databases = line[17].strip().split(',')
             dis_ass_trans = line[18].strip() 
+            if len(line) == 22: # preserve genetic_disease_model, if any
+                genetic_disease_model = line[21].strip()
 
             # skip if we are whitelisting dbs
             if len(databases):
@@ -48,7 +50,7 @@ def main(argv):
 
             # init
             if hgnc_id not in data:
-                data[hgnc_id] = {'HGNC_symbol': '', 'EnsEMBLid': [], 'Databases': [], 'red_pen': '', 'dis_ass_trans': '' }
+                data[hgnc_id] = {'HGNC_symbol': '', 'EnsEMBLid': [], 'Databases': [], 'red_pen': '', 'dis_ass_trans': '', 'genetic_disease_model': '' }
 
             # fill
             data[hgnc_id]['HGNC_symbol'] = hgnc_id
@@ -57,6 +59,7 @@ def main(argv):
             data[hgnc_id]['red_pen'] = red_pen
             data[hgnc_id]['dis_ass_trans'] = dis_ass_trans
             data[hgnc_id]['Phenotypic_disease_model'] = phenotypic_disease_model
+            data[hgnc_id]['genetic_disease_model'] = genetic_disease_model
 
             # fill versions dict
             for database in line_databases:
@@ -81,7 +84,7 @@ def main(argv):
         else:
             dis_ass_trans = line['dis_ass_trans']
         for ensEMBLid in set(line['EnsEMBLid']):
-            print('%s\t%s\t%s\t%s\t%s\t%s' % (line['HGNC_symbol'], ensEMBLid, line_dbs, line['red_pen'], dis_ass_trans, line['Phenotypic_disease_model']))
+            print('%s\t%s\t%s\t%s\t%s\t%s\t%s' % (line['HGNC_symbol'], ensEMBLid, line_dbs, line['red_pen'], dis_ass_trans, line['Phenotypic_disease_model'], line['genetic_disease_model']))
 
 if __name__ == '__main__':
     main(sys.argv[1:])
