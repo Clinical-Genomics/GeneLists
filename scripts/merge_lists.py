@@ -74,7 +74,7 @@ def main(argv):
         for database, version_date in database_version.items():
             print('##Database=<ID=%s,Version=%s,Date=%s,Acronym=%s,Complete_name=%s,Clinical_db_genome_build=GRCh37.p13' % (os.path.basename(filename), version_date['Version'], version_date['Date'], database, version_date['Fullname']))
 
-    print('HGNC_symbol	Ensembl_gene_id	Clinical_db_gene_annotation	Reduced_penetrance	Disease_associated_transcript	Phenotypic_disease_model')
+    print('HGNC_symbol	Ensembl_gene_id	Clinical_db_gene_annotation	Reduced_penetrance	Disease_associated_transcript	Phenotypic_disease_model	Genetic_disease_model')
     for line in data.values():
         line['Databases'].append('FullList')
         line_dbs = ','.join(list(set(line['Databases'])))
