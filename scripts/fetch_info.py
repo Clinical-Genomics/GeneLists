@@ -463,10 +463,11 @@ def put_official_hgnc_symbol(data):
 
   """
   for line in data:
-    HGNC_symbol = resolve_gene(line['OMIM_morbid'])
-    if HGNC_symbol != False and line['HGNC_symbol'] != HGNC_symbol:
-      p('Took official symbol {} over {}'.format(HGNC_symbol, line['HGNC_symbol']))
-      line['HGNC_symbol'] = HGNC_symbol
+    if 'OMIM_morbid' in line:
+      HGNC_symbol = resolve_gene(line['OMIM_morbid'])
+      if HGNC_symbol != False and line['HGNC_symbol'] != HGNC_symbol:
+        p('Took official symbol {} over {}'.format(HGNC_symbol, line['HGNC_symbol']))
+        line['HGNC_symbol'] = HGNC_symbol
     yield line
 
 def download_mim2gene():
