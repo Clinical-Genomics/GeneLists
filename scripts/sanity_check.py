@@ -182,6 +182,24 @@ def check_duplicates(lines):
 
         yield line
 
+def check_chromosome(lines):
+    """Checks if the Gene_locus corresponds with the listed chromosome
+
+    Args:
+        lines (list of dicts): each dict contains a dict with gl_header as keys
+
+    yields: a line of the lines
+    """
+    for line in lines:
+        if 'Gene_locus' in line:
+            if any([x for x in line['Gene_locus'] if x in ('q', 'p')]): # check if the locus has an q or p
+                gene_locus_chromosome = re.compile('p|q').split(line['Gene_locus'])[0]
+  
+                if gene_locus_chromosome != line['Chromosome']:
+                    warn("Chromosome '{}' differs from gene locus '{}'".format(line['Chromosome'], line['Gene_locus']))
+
+        yield line
+
 def main(argv):
     """Main program
 
@@ -253,6 +271,7 @@ def main(argv):
     [ line for line in \
         check_duplicates(
         check_coordinates(
+        check_chromosome(
         check_mandatory_fields(
         check_forbidden_chars(
         check_nr_fields(
@@ -260,7 +279,7 @@ def main(argv):
         check_delimiter(
         inc_line_nr(
             dict_data
-        ))))))))
+        )))))))))
     ]
 
     return warned
