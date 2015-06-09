@@ -158,7 +158,7 @@ def query(data, try_hgnc_again=False):
 
   keys = ['HGNC_symbol', 'Ensembl_gene_id', 'Chromosome'] # these columns will be put into the condition statement if they have a value
   for line in data:
-    HGNC_symbols=line['HGNC_symbol'].split(',')
+    HGNC_symbols=[ symbol for symbol in line['HGNC_symbol'].split(',') if len(symbol) > 0 ]
     HGNC_symbol_i=1
     for HGNC_symbol in HGNC_symbols:
       line['HGNC_symbol'] = HGNC_symbol # actually replace the entry
@@ -522,7 +522,10 @@ def query_omim(data):
 
       # add OMIM morbid
       if entry['mim_number'] is not None:
-        if 'OMIM_morbid' in line and len(line['OMIM_morbid']) > 0 and str(line['OMIM_morbid']) != line['HGNC_symbol'] + ':' + str(entry['mim_number']):
+        if 'OMIM_morbid' in line \
+        and len(line['OMIM_morbid']) > 0 \
+        and str(line['OMIM_morbid']) != line['HGNC_symbol'] + ':' + str(entry['mim_number']) \
+        and str(line['OMIM_morbid']) != str(entry['mim_number']):
           p('%s > %s client OMIM number differs from OMIM query' % (line['OMIM_morbid'], entry['mim_number']))
         line['OMIM_morbid'] = '%s:%s' % (line['HGNC_symbol'], entry['mim_number'])
 
