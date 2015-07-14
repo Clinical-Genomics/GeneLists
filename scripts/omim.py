@@ -66,7 +66,7 @@ class OMIM(object):
     self.format = response_format
     self.api_key = api_key
 
-    requests_cache.install_cache('omim_cache', backend='sqlite', expire_after=84600)
+    requests_cache.install_cache('omim_cache', backend='sqlite', expire_after=846000)
 
   def base(self, handler):
     """Compose url and universal params for any request handler.
@@ -180,13 +180,11 @@ class OMIM(object):
     sleep = 0
     retry = True # Execute the first
     while retry or res.status_code == requests.codes.conflict:
-        time.sleep(sleep)
-
         try:
             retry = False
             res = requests.get(url, params=params)
             if not res.from_cache:
-                sleep(0.25) # wait for 250ms as according to OMIM specs
+                time.sleep(0.25) # wait for 250ms as according to OMIM specs
         except Exception:
             retry = True
         #except TypeError:

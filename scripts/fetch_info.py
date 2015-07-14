@@ -7,10 +7,12 @@ import pymysql
 import argparse
 import re
 import os
+import json
 from urllib.request import urlretrieve, Request, urlopen
 
 from .omim import OMIM
 from .ensembl import Ensembl
+from .genenames import Genenames
 
 gl_header=['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_symbol', 'Protein_name', 'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name', 'Trivial_name_short', 'Phenotypic_disease_model', 'OMIM_morbid', 'Gene_locus', 'UniProt_id', 'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Reduced_penetrance', 'Clinical_db_gene_annotation', 'Disease_associated_transcript', 'Ensembl_transcript_to_refseq_transcript', 'Gene_description', 'Genetic_disease_model']
 
@@ -453,7 +455,7 @@ def remove_non_genes(data):
         p('Removed: %s' % line)
 
 def put_official_hgnc_symbol(data):
-  """Resolve the official HGNC symbol and replace line['HGNC_symbol']
+  """Resolve the official HGNC symbol from OMIM and replace line['HGNC_symbol']
 
   Args:
       data (list of dicts): Inner dict represents a row in a gene list
@@ -468,6 +470,29 @@ def put_official_hgnc_symbol(data):
       if HGNC_symbol != False and line['HGNC_symbol'] != HGNC_symbol:
         p('Took official symbol {} over {}'.format(HGNC_symbol, line['HGNC_symbol']))
         line['HGNC_symbol'] = HGNC_symbol
+    yield line
+
+def add_official_hgnc_symbol(data):
+  """Prepend the official HGNC symbol fetched from genenames.org to the HGNC_symbol.
+
+  Args:
+      data (list of dicts): Inner dict represents a row in a gene list
+
+  Yields:
+      dict: now with the official HGNC_symbol prepended
+
+  """
+  genenames = Genenames()
+  for line in data:
+    official_symbol = genenames.official(line['HGNC_symbol'])
+
+    if official_symbol:
+      try:
+        if official_symbol != line['HGNC_symbol']:
+          p('Add official HGNC symbol %s' % official_symbol)
+          line['HGNC_symbol'] = ','.join( (official_symbol, line['HGNC_symbol']) )
+      except KeyError as ke:
+        pass
     yield line
 
 def download_mim2gene():
@@ -493,7 +518,7 @@ def query_omim(data):
 
   omim = OMIM(api_key='<fill in key>')
   for line in data:
-    if 'HGNC_symbol' in line:
+    if 'HGNC_symbol' in line and 'Chromosome' in line:
       entry = omim.gene(line['HGNC_symbol'])
 
       phenotypic_disease_models = omim.parse_phenotypic_disease_models(entry['phenotypes'], line['Chromosome'])
@@ -605,10 +630,12 @@ def main(argv):
   else:
     reduced_data = fixed_data
 
+  aliased_data = add_official_hgnc_symbol(reduced_data)
+
   # fill in missing blanks
   global conn
   conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
-  ensembld_data = query(reduced_data, try_hgnc_again=True)
+  ensembld_data = query(aliased_data, try_hgnc_again=True)
 
   # put the official HGNC symbol
   hgnc_official_data = put_official_hgnc_symbol(ensembld_data)
