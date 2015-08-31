@@ -36,7 +36,7 @@ def main(argv):
             ensEMBLid = line[14].strip()
             red_pen = line[16].strip()
             line_databases = line[17].strip().split(',')
-            dis_ass_trans = line[18].strip() 
+            dis_ass_trans = line[18].strip()
             if len(line) == 22: # preserve genetic_disease_model, if any
                 genetic_disease_model = line[21].strip()
 
@@ -65,7 +65,10 @@ def main(argv):
             for database in line_databases:
                 if database not in versions[infile.name]:
                     full_mod_date = getgitlastmoddate(infile.name, '%c')
-                    mod_date = datetime.datetime.strptime(full_mod_date, '%c').strftime('%Y%m%d')
+                    if not full_mod_date: # ok, we haven't saved this list yet
+                        mod_date = datetime.datetime.now().strftime('%Y%m%d')
+                    else:
+                        mod_date = datetime.datetime.strptime(full_mod_date, '%c').strftime('%Y%m%d')
                     version = getgittag(infile.name, full_mod_date)
                     full_name = acronyms[database]
                     versions[infile.name][database] = { 'Version': version, 'Date': mod_date, 'Fullname': full_name }
