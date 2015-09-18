@@ -55,7 +55,7 @@ TMP_GL=$(mktemp)
 
 # remove the previous meta data headers
 if [[ ${GENELIST_NAME} != 'cust000-Clinical_master_list.txt' ]]; then
-    grep -v '^##' ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST}
+    grep -v '^##Database' ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST}
 
     # add a header to the commited gene list
     for PANEL in "${PANELS[@]}"; do

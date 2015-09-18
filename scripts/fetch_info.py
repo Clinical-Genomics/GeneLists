@@ -32,32 +32,33 @@ def print_header(header=gl_header):
 
   Args:
       header (list, optional): a list of strings
-  Returns:
-      pass
   Note:
       Prints to STDOUT
   """
   if not errors_only:
+    print(get_header(header))
 
-    global contigs
-    for contig in contigs:
-      print('###contig=<ID={}'.format(contig))
-    print('#' + "\t".join(gl_header))
-
-def get_headers(header=gl_header):
+def get_header(header=gl_header):
   """
-  Returns the contigs meta data headers.
   Returns the gl_header.
 
   Args:
       header (list, optional): a list of strings
+  Return (str): the header
+  """
+
+  return '#' + "\t".join(gl_header)
+
+def get_contigs():
+  """ Returns the contigs meta data headers.
+
   Yields (list): one item per header
+
   """
 
   global contigs
   for contig in sorted(contigs):
     yield '##contig=<ID={}'.format(contig)
-  yield '#' + "\t".join(gl_header)
 
 def format_line(line):
   """Formats a line based on the order of the gl_headers
@@ -86,10 +87,7 @@ def print_line(line):
       Will print the STDOUT
   """
   if not errors_only:
-    ordered_line = list()
-    for column_name in gl_header:
-      ordered_line.append(str(line[column_name]))
-    print("\t".join(ordered_line))
+    print(format_line(line))
 
 def p(line, end=os.linesep):
   """print only if the verbose switch has been set
@@ -667,7 +665,8 @@ def main(argv):
   comments = []
   line = next(parsable_data)
   while line[0].startswith('##'):
-    comments.append(line)
+    if not line[0].startswith('##contig'):
+      comments.append(line) # skip all contig comments
     line = next(parsable_data)
 
   # list to dict
@@ -729,8 +728,11 @@ def main(argv):
     print_data.append(line)
 
   # print the gene list
-  for line in get_headers():
+  for comment in comments:
+    outfile.write('\t'.join(comment) + '\n')
+  for line in get_contigs():
     outfile.write(line + '\n')
+  outfile.write(get_header() + '\n')
   for line in print_data:
     outfile.write(format_line(line) + '\n')
 
