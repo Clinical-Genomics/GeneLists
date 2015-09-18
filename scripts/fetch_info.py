@@ -23,9 +23,12 @@ conn = None
 verbose = False # to print or not to print
 errors_only = False # print only errors. Does not print the gene list. Needs verbose=True to work.
 mim2gene = False # resolve HGNC symbol with mim2gene.txt
+contigs = set() # a list of al contigs in the list
 
 def print_header(header=gl_header):
-  """Prints the gl_header
+  """
+  Prints the contigs meta data headers.
+  Prints the gl_header.
 
   Args:
       header (list, optional): a list of strings
@@ -35,7 +38,40 @@ def print_header(header=gl_header):
       Prints to STDOUT
   """
   if not errors_only:
+
+    global contigs
+    for contig in contigs:
+      print('###contig=<ID={}'.format(contig))
     print('#' + "\t".join(gl_header))
+
+def get_headers(header=gl_header):
+  """
+  Returns the contigs meta data headers.
+  Returns the gl_header.
+
+  Args:
+      header (list, optional): a list of strings
+  Yields (list): one item per header
+  """
+
+  global contigs
+  for contig in sorted(contigs):
+    yield '##contig=<ID={}'.format(contig)
+  yield '#' + "\t".join(gl_header)
+
+def format_line(line):
+  """Formats a line based on the order of the gl_headers
+
+  Args:
+      line (dict): dict with values for one line of a gene list. All values of gl_headers should be present as keys
+
+  Returns (str): a tab-delim line
+  """
+  ordered_line = list()
+  for column_name in gl_header:
+    ordered_line.append(str(line[column_name]))
+  return "\t".join(ordered_line)
+
 
 def print_line(line):
   """Prints a line based on the order of the gl_headers
@@ -393,6 +429,7 @@ def add_mim2gene_alias(data):
       HGNC_symbol = resolve_gene(OMIM_id)
       EnsEMBL_gene_id = resolve_ensembl_gene_id(OMIM_id)
       if HGNC_symbol != False and HGNC_symbol not in HGNC_symbols:
+        p("Add mim2gene HGNC symbol %s" % HGNC_symbol)
         HGNC_symbols.insert(0, HGNC_symbol)
       if EnsEMBL_gene_id != False and 'Ensembl_gene_id' in line.keys() and line['Ensembl_gene_id'] != EnsEMBL_gene_id:
         p("morbidmap '{}' differs from local '{}'".format(line['Ensembl_gene_id'], EnsEMBL_gene_id))
@@ -562,10 +599,34 @@ def query_omim(data):
 
     yield line
 
+def gather_contig(data):
+    """Aggregates the contigs so we can print them as headers
+
+    Args:
+      data (list of dicts): Inner dict represents a row in a gene list
+
+    Yields:
+      dict: with the added HGNC symbol prepended to the HGNC_symbol column.
+
+    """
+    for line in data:
+
+      global contigs
+
+      try:
+        contig = int(line['Chromosome'])
+      except ValueException:
+        contig = line['Chromosome']
+
+      contigs.add(contig)
+
+      yield line
+
 def main(argv):
   # set up the argparser
   parser = argparse.ArgumentParser(description='Queries EnsEMBL and fills in the blanks of a gene list. Only columns headers found in gl_headers will be used')
-  parser.add_argument('infile', type=argparse.FileType('r'), help='the tsv file with correct headers')
+  parser.add_argument('infile', type=argparse.FileType('r'), help='the input tsv file with correct headers')
+  parser.add_argument('outfile', type=argparse.FileType('w'), help='the output tsv file with correct headers')
   parser.add_argument('--zero', default=False, action='store_true', dest='zero_based', help='if set, will convert 0-based coordinates to 1-based')
   parser.add_argument('--verbose', default=False, action='store_true', dest='verbose', help='if set, will show conflict messages from EnsEMBLdb inbetween the gene list lines')
   parser.add_argument('--errors-only', default=False, action='store_true', dest='errors_only', help='if set, will not output the gene list, but only the conflict messages from EnsEMBLdb.')
@@ -598,6 +659,7 @@ def main(argv):
 
   # read in the TSV file
   tsvfile = args.infile
+  outfile = args.outfile
   raw_data = ( line.strip() for line in tsvfile ) # sluuuurp
   parsable_data = ( line.split("\t") for line in raw_data )
 
@@ -658,12 +720,19 @@ def main(argv):
   # at last, clean up the output
   cleaner_data = cleanup(munged_data)
 
+  # get all contigs
+  final_data = gather_contig(cleaner_data)
+
+  print_data = []
+  for line in final_data:
+    print(format_line(line))
+    print_data.append(line)
+
   # print the gene list
-  for comment in comments:
-    print('\t'.join(comment))
-  print_header()
-  for line in cleaner_data:
-    print_line(line)
+  for line in get_headers():
+    outfile.write(line + '\n')
+  for line in print_data:
+    outfile.write(format_line(line) + '\n')
 
 if __name__ == '__main__':
     main(sys.argv[1:])
