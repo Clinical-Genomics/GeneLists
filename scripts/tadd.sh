@@ -8,7 +8,7 @@
 set -e
 
 if [[ ${#@} < 2 ]]; then
-    echo "USAGE: $0 genelist repo --minor|major"
+    echo "USAGE: $0 genelist --minor|major"
     echo "	$0 ~/git/cust000 --minor"
     exit 1
 fi
@@ -70,6 +70,12 @@ if [[ ${GENELIST_NAME} != 'cust000-Clinical_master_list.txt' ]]; then
             echo "##Database=<ID=${GENELIST_NAME},Version=${TAG},Date=$(date +'%Y%m%d'),Acronym=${PANEL},Clinical_db_genome_build=GRCh37.p13" | cat - ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST}
         fi
     done
+else
+    grep -v '^##Database=<ID=cust000-Clinical_master_list.txt' ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST}
+    PANEL='FullList'
+    COMPLETE_NAME=$(grep -h "^${PANEL}:" $GL_PATH/LISTS | cat)
+    COMPLETE_NAME=${COMPLETE_NAME#*: }
+    echo "##Database=<ID=${GENELIST_NAME},Version=${TAG},Date=$(date +'%Y%m%d'),Acronym=${PANEL},Complete_name=${COMPLETE_NAME},Clinical_db_genome_build=GRCh37.p13" | cat - ${GENELIST} > ${TMP_GL} && mv ${TMP_GL} ${GENELIST}
 fi
 
 # add the version to a changelog
