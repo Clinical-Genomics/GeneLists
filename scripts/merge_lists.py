@@ -63,6 +63,8 @@ def main(argv):
 
             # fill versions dict
             for database in line_databases:
+                if database == 'OMIM':
+                    if not infile.name.endswith('OMIM.txt'): continue
                 if database not in versions[infile.name]:
                     full_mod_date = getgitlastmoddate(infile.name, '%c')
                     if not full_mod_date: # ok, we haven't saved this list yet
