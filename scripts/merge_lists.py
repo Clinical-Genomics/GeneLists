@@ -28,17 +28,24 @@ def main(argv):
     for infile in args.infiles:
         versions[infile.name] = {}
         for line in infile:
-            if line.startswith('#'): continue # skip comments
+            # deal with headers
+            if line.startswith('##'): continue # skip comments
+            if line.startswith('#Chromosome'): # get the header
+                #Chromosome	Gene_start	Gene_stop	HGNC_symbol	Protein_name	Symptoms	Biochemistry	Imaging	Disease_trivial_name	Trivial_name_short	Phenotypic_disease_model	OMIM_morbid	Gene_locus	UniProt_id	Ensembl_gene_id	Ensemble_transcript_ID	Reduced_penetrance	Clinical_db_gene_annotation	Disease_associated_transcript	Ensembl_transcript_to_refseq_transcript	Gene_description	Genetic_disease_model
+                header = line.split("\t")
+                continue
+
             line = line.split("\t")
             if len(line) < 21: continue # crude way of omitting non-gene lists
-            hgnc_id = line[3].strip()
-            phenotypic_disease_model = line[10].strip() # keep manual annotations
-            ensEMBLid = line[14].strip()
-            red_pen = line[16].strip()
-            line_databases = line[17].strip().split(',')
-            dis_ass_trans = line[18].strip()
-            if len(line) == 22: # preserve genetic_disease_model, if any
-                genetic_disease_model = line[21].strip()
+            line = dict(zip(header, line)) # get me a nice mapping
+
+            hgnc_id = line['HGNC_symbol'].strip()
+            phenotypic_disease_model = line['Phenotypic_disease_model'].strip() # keep manual annotations
+            ensEMBLid = line['Ensembl_gene_id'].strip()
+            red_pen = line['Reduced_penetrance'].strip()
+            line_databases = line['Clinical_db_gene_annotation'].strip().split(',')
+            dis_ass_trans = line['Disease_associated_transcript'].strip()
+            genetic_disease_model =  line['Genetic_disease_model'].strip() if 'Genetic_disease_model' in line else ''
 
             # skip if we are whitelisting dbs
             if len(databases):
