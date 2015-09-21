@@ -24,6 +24,7 @@ verbose = False # to print or not to print
 errors_only = False # print only errors. Does not print the gene list. Needs verbose=True to work.
 mim2gene = False # resolve HGNC symbol with mim2gene.txt
 contigs = set() # a list of al contigs in the list
+outfile = None # where to write to
 
 def print_header(header=gl_header):
   """
@@ -57,7 +58,8 @@ def get_contigs():
   """
 
   global contigs
-  for contig in sorted(contigs):
+  for contig in sorted(contigs, key=lambda item: (int(item)
+                                         if item.isdigit() else float('inf'), item)):
     yield '##contig=<ID={}'.format(contig)
 
 def format_line(line):
@@ -89,7 +91,7 @@ def print_line(line):
   if not errors_only:
     print(format_line(line))
 
-def p(line, end=os.linesep):
+def p(line):
   """print only if the verbose switch has been set
 
   Args:
@@ -99,7 +101,8 @@ def p(line, end=os.linesep):
       pass
   """
   if verbose:
-    print('\033[93m', '>>> ', line, '\033[0m', end=end)
+    print('\033[93m', '>>> ', line, '\033[0m')
+    outfile.write('\033[93m>>> {} \033[0m\n'.format(line))
 
 def resolve_ensembl_id(hgnc_id):
   """Query genenames.org for the EnsEMBL gene id based on the HGNC symbol.
@@ -219,9 +222,9 @@ def query(data, try_hgnc_again=False):
 
         # we couldn't resolve this with genenames.org
         if 'Chromosome' in line:
-          p("Multiple entries: %s, chromosome: %s => " % (HGNC_symbol, line['Chromosome']), end='')
+          p("Multiple entries: %s, chromosome: %s => " % (HGNC_symbol, line['Chromosome']))
         else:
-          p("Multiple entries: %s => " % (HGNC_symbol), end='')
+          p("Multiple entries: %s => " % (HGNC_symbol))
         p("Adding: %s" % ', '.join(( entry['Ensembl_gene_id'] for entry in rs )) )
         for entry in rs:
           yield merge_line(entry, line)
@@ -611,11 +614,7 @@ def gather_contig(data):
 
       global contigs
 
-      try:
-        contig = int(line['Chromosome'])
-      except ValueException:
-        contig = line['Chromosome']
-
+      contig = line['Chromosome']
       contigs.add(contig)
 
       yield line
@@ -645,7 +644,7 @@ def main(argv):
 
   # download a new version of mim2gene.txt
   if args.download_mim2gene:
-    p('Downloading mim2gene.txt ... ', end='')
+    p('Downloading mim2gene.txt ... ')
     dl_filename = download_mim2gene()
     p('Done: %s' % dl_filename)
 
@@ -656,6 +655,7 @@ def main(argv):
     cache_mim2gene()
 
   # read in the TSV file
+  global outfile
   tsvfile = args.infile
   outfile = args.outfile
   raw_data = ( line.strip() for line in tsvfile ) # sluuuurp
