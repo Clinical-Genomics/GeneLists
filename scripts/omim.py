@@ -207,6 +207,44 @@ class OMIM(object):
     else:
       return []
 
+  def search_gene_raw(self, hgnc_symbol, include=('geneMap', 'dates')):
+    """Search for MIM number for a HGNC approved symbol.
+
+    Args:
+      hgnc_symbol (str): HGNC approved symbol
+      include (list, optional): additional sections to include
+
+    Returns: raw json object.
+    """
+    url, params = self.base('entry/search')
+
+    params['search'] = "approved_gene_symbol:%s" % hgnc_symbol
+    params['include'] = include
+
+    res = False
+    sleep = 0
+    retry = True # Execute the first
+    while retry or res.status_code == requests.codes.conflict:
+        try:
+            retry = False
+            res = requests.get(url, params=params)
+            if not res.from_cache:
+                time.sleep(0.25) # wait for 250ms as according to OMIM specs
+        except Exception:
+            retry = True
+        #except TypeError:
+        #    retry = True
+        #except ProtocolError:
+        #    retry = True
+
+        # when we get trottled, give it a sec
+        if sleep > 1000: # if sleeping for 15mins, reset
+            sleep = 1
+        else:
+            sleep *= 2
+
+    return res.text
+
   def clinical_synopsis(self, mim, include=('clinicalSynopsis',),
                         exclude=None):
     """Get data from ``clinicalSynopsis`` handler.
