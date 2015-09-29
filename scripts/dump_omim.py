@@ -51,9 +51,10 @@ def main(argv):
     data = list2dict(header, parsable_data)
     json_data = get_raw_omim(data)
 
-    all_json = [ line['raw'] for line in json_data ]
-
-    print('[ {} ]'.format(','.join(all_json)))
+    print('[')
+    for line in json_data:
+        print(line['raw'] + ',')
+    print(' {} ]')
 
 if __name__ == '__main__':
     main(sys.argv[1:])
