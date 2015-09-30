@@ -56,7 +56,7 @@ class OMIM(object):
   post initialization.
 
   Args:
-    app (Flask): Flask instance
+    api_key (str): the OMIM API key http://www.omim.org/api
     response_format (str): format for response (xml, json, etc.)
   """
 
