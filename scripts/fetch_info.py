@@ -642,6 +642,13 @@ def main(argv):
     verbose = True
     errors_only = True
 
+  # read in the TSV file
+  global outfile
+  tsvfile = args.infile
+  outfile = args.outfile
+  raw_data = ( line.strip() for line in tsvfile ) # sluuuurp
+  parsable_data = ( line.split("\t") for line in raw_data )
+
   # download a new version of mim2gene.txt
   if args.download_mim2gene:
     p('Downloading mim2gene.txt ... ')
@@ -653,13 +660,6 @@ def main(argv):
     global mim2gene
     mim2gene = True
     cache_mim2gene()
-
-  # read in the TSV file
-  global outfile
-  tsvfile = args.infile
-  outfile = args.outfile
-  raw_data = ( line.strip() for line in tsvfile ) # sluuuurp
-  parsable_data = ( line.split("\t") for line in raw_data )
 
   # skip parsing of leading comments
   comments = []
