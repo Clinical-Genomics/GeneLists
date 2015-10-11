@@ -66,7 +66,7 @@ class OMIM(object):
     self.format = response_format
     self.api_key = api_key
 
-    requests_cache.install_cache('omim_cache', backend='sqlite', expire_after=846000)
+    requests_cache.install_cache('omim_cache', backend='sqlite', expire_after=8460000)
 
   def base(self, handler):
     """Compose url and universal params for any request handler.
@@ -173,7 +173,8 @@ class OMIM(object):
     """
     url, params = self.base('entry/search')
 
-    params['search'] = "approved_gene_symbol:%s" % hgnc_symbol
+    params['search'] = "%s" % hgnc_symbol # leaving out approved_gene_symbol to get a match on aliases
+    #params['search'] = "approved_gene_symbol:%s" % hgnc_symbol
     params['include'] = include
 
     res = False
