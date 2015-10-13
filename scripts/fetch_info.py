@@ -525,12 +525,12 @@ def add_official_hgnc_symbol(data):
     official_symbol = genenames.official(line['HGNC_symbol'])
 
     if official_symbol:
-      try:
-        if official_symbol != line['HGNC_symbol']:
-          p('Add official HGNC symbol %s' % official_symbol)
-          line['HGNC_symbol'] = ','.join( (official_symbol, line['HGNC_symbol']) )
-      except KeyError as ke:
-        pass
+      if official_symbol != line['HGNC_symbol']:
+        p('Add official HGNC symbol %s' % official_symbol)
+        line['HGNC_symbol'] = ','.join( (official_symbol, line['HGNC_symbol']) )
+      line['Official_HGNC_symbol'] = official_symbol
+    else:
+      line['Official_HGNC_symbol'] = line['HGNC_symbol']
     yield line
 
 def download_mim2gene():
@@ -557,7 +557,7 @@ def query_omim(data):
   omim = OMIM(api_key='<fill in key>')
   for line in data:
     if 'HGNC_symbol' in line and 'Chromosome' in line:
-      entry = omim.gene(line['HGNC_symbol'])
+      entry = omim.gene(line['Official_HGNC_symbol'])
 
       phenotypic_disease_models = omim.parse_phenotypic_disease_models(entry['phenotypes'], line['Chromosome'])
 

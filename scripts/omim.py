@@ -2,6 +2,7 @@
 from __future__ import absolute_import, unicode_literals
 from datetime import datetime
 
+#import json
 import time
 import requests
 import requests_cache
@@ -173,8 +174,8 @@ class OMIM(object):
     """
     url, params = self.base('entry/search')
 
-    params['search'] = "%s" % hgnc_symbol # leaving out approved_gene_symbol to get a match on aliases
-    #params['search'] = "approved_gene_symbol:%s" % hgnc_symbol
+    #params['search'] = "%s" % hgnc_symbol # leaving out approved_gene_symbol to get a match on aliases
+    params['search'] = "approved_gene_symbol:%s" % hgnc_symbol
     params['include'] = include
 
     res = False
@@ -202,6 +203,7 @@ class OMIM(object):
     data = res.json()
 
     entries = data['omim']['searchResponse']['entryList']
+    #print(json.dumps(entries, sort_keys=True, indent=4, separators=(',', ': ')))
 
     if entries:
       return entries
