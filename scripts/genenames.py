@@ -68,12 +68,19 @@ class Genenames(object):
       Returns (str): the official HGNC symbol
 
       """
-      data = self.get("fetch/prev_symbol/%s" % hgnc_symbol)
+      data = self.get("fetch/symbol/%s" % hgnc_symbol)
+      #import json
+      #print(json.dumps(data, sort_keys=True, indent=4, separators=(',', ': ')))
       try:
+        official_symbol = data['response']['docs'][0]['symbol']
+      except (KeyError, IndexError) as e:
+
+        # ok, no results found, maybe try its previous symbol?
+        data = self.get("fetch/prev_symbol/%s" % hgnc_symbol)
+
+        try:
           official_symbol = data['response']['docs'][0]['symbol']
-      except KeyError as ke:
-          return None
-      except IndexError:
+        except (KeyError, IndexError) as e:
           return None
 
       return official_symbol
