@@ -7,7 +7,6 @@ import pymysql
 import argparse
 import re
 import os
-import json
 from urllib.request import urlretrieve, Request, urlopen
 
 from .omim import OMIM
@@ -671,6 +670,8 @@ def main(argv):
 
   # list to dict
   header = line # get the header
+  if header[0].startswith('#'):
+    header[0] = header[0].lstrip('#')
   dict_data = list2dict(header, parsable_data)
 
   # clean up the input
