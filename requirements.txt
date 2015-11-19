@@ -1,2 +1,4 @@
 PyMySQL==0.6.6
 requests==2.5.3
+requests-cache==0.4.10
+wheel==0.24.0
