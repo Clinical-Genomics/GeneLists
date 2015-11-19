@@ -7,7 +7,7 @@ source log.bash
 log $(getversion)
 
 MIPREFDIR=${1-'/mnt/hds/proj/bioinfo/MIP_ANALYSIS/references'}
-BITBUCKETDIR=${2-"${MIPREFDIR}/GeneLists/"}
+BITBUCKETDIR=${2-"/mnt/hds/proj/bioinfo/MIP_ANALYSIS/GeneLists/"}
 
 SCRIPTDIR=`dirname $(readlink -f $0)`
 CWD=`pwd`
