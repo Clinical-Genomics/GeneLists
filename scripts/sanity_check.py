@@ -218,7 +218,7 @@ def main(argv):
     lines = (line.strip('\r\n') for line in infile) # sluuuurp
 
     # get the line in parts
-    parsable_data = ( line.split('\t') for line in lines )
+    parsable_data = (line.split('\t') for line in lines)
 
     # skip parsing of leading comments
     comments = []
@@ -245,7 +245,8 @@ def main(argv):
     global gl_header
     global mandatory_fields
     header_diff = set(mandatory_fields.keys()).difference(header)
-    if len(header_diff) > 0: warn("Missing columns {}".format(header_diff))
+    if len(header_diff) > 0:
+        warn("Missing columns {}".format(header_diff))
 
     # header should not contain white space
     for head in header:
