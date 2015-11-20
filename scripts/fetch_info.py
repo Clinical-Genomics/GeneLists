@@ -462,7 +462,7 @@ def redpen2symbol(data):
 
   """
   for line in data:
-    if 'Reduced_penetrance' in line and line['Reduced_penetrance'].lower() == 'Yes':
+    if 'Reduced_penetrance' in line and line['Reduced_penetrance'].lower() == 'yes':
       line['Reduced_penetrance'] = line['HGNC_symbol']
     yield line
 
