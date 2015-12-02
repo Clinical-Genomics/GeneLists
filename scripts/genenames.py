@@ -18,7 +18,7 @@ class Genenames(object):
         self.base_url = 'http://rest.genenames.org/'
         self.format = response_format
 
-        requests_cache.install_cache('genenames_cache', backend='sqlite', expire_after=846000)
+        requests_cache.install_cache('genenames_cache', backend='sqlite', expire_after=8460000)
 
     def get(self, handler):
         """Compose url and universal headers for any request handler.
