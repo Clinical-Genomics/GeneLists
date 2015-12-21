@@ -12,10 +12,11 @@ def format_entry(json_entry):
   # extract nested titles section
   titles = json_entry.get('titles', {})
 
-  if 'includedTitles' in titles:
-    other_entities = titles['includedTitles'].split(';;\n')
+  if 'preferredTitle' in titles:
+    other_entities = titles['preferredTitle']
   else:
-    other_entities = []
+    other_entities = ''
+
 
   # extract "geneMap"
   gene_map = json_entry.get('geneMap', {})
@@ -143,7 +144,7 @@ class OMIM(object):
         models = models.difference(TERMS_AUTOSOMAL) if chromosome.upper() == 'X' else models.difference(TERMS_X)
         models = set([TERMS_MAPPER.get(model_human, model_human) for model_human in models]) # rename them if possible
 
-      phenotypic_disease_model[ phenotype['phenotype_mim_number'] ] = list(models) if len(models) else None
+      phenotypic_disease_model[ phenotype['phenotype_mim_number'] ] = { 'models': list(models) if len(models) else None, 'descr': phenotype['phenotype'] }
 
     return phenotypic_disease_model
 
