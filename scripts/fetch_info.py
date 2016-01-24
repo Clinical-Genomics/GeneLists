@@ -58,7 +58,7 @@ def get_contigs():
 
     global contigs
     for contig in sorted(contigs, key=lambda item: (int(item)
-                                                                                 if item.isdigit() else float('inf'), item)):
+                         if item.isdigit() else float('inf'), item)):
         yield '##contig=<ID={}'.format(contig)
 
 def format_line(line):
@@ -136,7 +136,7 @@ def cache_mim2gene(mim2gene_file=os.path.dirname(os.path.abspath(__file__))+os.p
     """
     global symbol_of
     mim2gene_fh = open(mim2gene_file, 'r')
-    lines = ( line.strip() for line in mim2gene_fh )
+    lines = ( line for line in mim2gene_fh )
     for line in lines:
         (file_omim_id, omim_type, gene_id, hgnc_symbol, ensembl_gene_id) = line.split("\t")
         if omim_type in ('gene', 'gene/phenotype') and hgnc_symbol != '-':
@@ -725,7 +725,8 @@ def main(argv):
 
     print_data = []
     for line in final_data:
-        print(format_line(line))
+        if verbose:
+            print(format_line(line))
         print_data.append(line)
 
     # print the gene list
