@@ -45,6 +45,7 @@ cd $OLD_WD
 
 # say something
 read -p "Commit message: " MSG
+#MSG="Update $GENELIST_NAME with OMIM"
 
 cd "$(dirname $GENELIST)"
 
@@ -92,7 +93,7 @@ git push --tags origin
 
 # update clinicalgenomics.se
 cd $SCRIPT_PATH/..
-python -m scripts.update_cg $(dirname $(dirname $(readlink -nm $GENELIST)))/cust00[1234]/cust*.txt > ~/git/clinical-genomics.github.io/_pages/namnpagenlistor.md
+python -m scripts.update_cg $(dirname $(dirname $(readlink -nm $GENELIST)))/cust00[1234]/cust*.txt > ~/git/clinical-genomics.github.io/_topics/namnpagenlistor.md
 cd ~/git/clinical-genomics.github.io
 git pull
 git add _pages/namnpagenlistor.md
