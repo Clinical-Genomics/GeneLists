@@ -112,7 +112,7 @@ def check_trimming(lines):
                 warn("{} ('{}') is not trimmed!".format(key, value))
         yield line
 
-def check_nr_fields(lines):
+def check_nr_fields(lines, header=gl_header):
     """Checks if the nr of fields == nr of headers
 
     Args:
@@ -120,8 +120,7 @@ def check_nr_fields(lines):
 
     yields: a line of the lines
     """
-    global gl_header
-    len_header = len(gl_header)
+    len_header = len(header)
     for line in lines:
         len_line = len(line)
         if len_line != len_header:
@@ -275,12 +274,12 @@ def main(argv):
         check_chromosome(
         check_mandatory_fields(
         check_forbidden_chars(
-        check_nr_fields(
         check_trimming(
         check_delimiter(
+        check_nr_fields(
         inc_line_nr(
             dict_data
-        )))))))))
+        ), header))))))))
     ]
 
     return warned
