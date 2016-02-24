@@ -53,8 +53,8 @@ def main(argv):
         # fill versions dict
         mod_date = getgitlastmoddate(infile.name, '%Y-%m-%d %H:%M:%S')
         if not mod_date:
-          print('WARNING: {} not committed!'.format(infile.name))
-          continue
+            print('WARNING: {} not committed!'.format(infile.name))
+            continue
         version = getgittag(infile.name, date=mod_date) # get version on that date
         full_name = acronyms[database]
         panels = acronyms.get_panels_of(database)
