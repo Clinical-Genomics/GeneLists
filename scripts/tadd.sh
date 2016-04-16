@@ -23,7 +23,17 @@ GENELIST_NAME=$(basename $GENELIST)
 
 # create the tag
 cd $GL_PATH
-TAG=$(git describe --abbrev=0 | tail -1 2> /dev/null)
+# first find a tag of this list, if any
+set +e
+FULL_TAG=$(git describe --abbrev=0 --match "*${GENELIST_NAME}*" 2> /dev/null)
+if [[ $? -ne 0 ]]; then # on fail, get the last tag
+    TAG=$(git describe --abbrev=0 | tail -1 2> /dev/null)
+else
+    IFS=- read -a TAG_PARTS <<< "$FULL_TAG"
+    TAG=${TAG_PARTS[1]}
+fi
+set -e
+
 case "$TAG_BUMP" in
     --minor) 
         MAJORPART=${TAG//.*}
@@ -81,13 +91,14 @@ fi
 
 # add the version to a changelog
 DATE=$(date +"%y/%m/%d %H:%M")
-echo "$DATE :: Generated with version $BRANCH:$VERSION" > CHANGELOG
+echo "$DATE :: Generated with version $BRANCH:$VERSION" > VERSION
 
 # commit + tag
 git add "$GENELIST_NAME"
 git add CHANGELOG
+git add VERSION
 git commit -m "$MSG"
-git tag -a "$TAG" -m "$MSG"
+git tag -a "${GENELIST_NAME}-${TAG}" -m "$MSG"
 git push
 git push --tags origin
 
