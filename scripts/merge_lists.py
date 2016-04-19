@@ -51,6 +51,10 @@ def main(argv):
             genetic_disease_model = line['Genetic_disease_model'].strip() if 'Genetic_disease_model' in line else ''
             omim_morbid = line['OMIM_morbid'].strip()
 
+            # sanitize omim morbid
+            if ':' in omim_morbid:
+                omim_morbid = omim_morbid.split(':')[1]
+
             # skip if we are whitelisting dbs
             if len(databases):
                 set_databases = set(line_databases).intersection(databases)
@@ -72,7 +76,7 @@ def main(argv):
             data[hgnc_id]['dis_ass_trans'] = dis_ass_trans
             data[hgnc_id]['Phenotypic_disease_model'] = phenotypic_disease_model
             data[hgnc_id]['genetic_disease_model'] = genetic_disease_model
-            data[hgnc_id]['OMIM_morbid'] = omim_morbid.split(':')[1] if omim_morbid else ''
+            data[hgnc_id]['OMIM_morbid'] = omim_morbid
 
             # fill versions dict
             for database in line_databases:
