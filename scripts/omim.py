@@ -203,7 +203,8 @@ class OMIM(object):
     data = res.json()
 
     entries = data['omim']['searchResponse']['entryList']
-    #print(json.dumps(entries, sort_keys=True, indent=4, separators=(',', ': ')))
+#    import json
+#    print(json.dumps(entries, sort_keys=True, indent=4, separators=(',', ': ')))
 
     if entries:
       return entries
