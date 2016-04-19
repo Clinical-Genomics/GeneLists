@@ -20,6 +20,8 @@ OLD_WD=$(pwd)
 SCRIPT_PATH=$(dirname $(readlink -nm $0))
 GL_PATH=$(dirname $GENELIST)
 GENELIST_NAME=$(basename $GENELIST)
+GENELIST_SHORTNAME=${GENELIST_NAME%%.*} # remove .txt
+GENELIST_SHORTNAME=${GENELIST_SHORTNAME#*-} # remove cust???-
 
 # create the tag
 cd $GL_PATH
@@ -98,7 +100,7 @@ git add "$GENELIST_NAME"
 git add CHANGELOG
 git add VERSION
 git commit -m "$MSG"
-git tag -a "${GENELIST_NAME}-${TAG}" -m "$MSG"
+git tag -a "${GENELIST_SHORTNAME}-${TAG}" -m "$MSG"
 git push
 git push --tags origin
 
