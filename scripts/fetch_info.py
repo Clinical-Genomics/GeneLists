@@ -140,7 +140,7 @@ def cache_mim2gene(mim2gene_file=os.path.dirname(os.path.abspath(__file__))+os.p
     for line in lines:
         if line.startswith('#'): continue
         (file_omim_id, omim_type, gene_id, hgnc_symbol, ensembl_gene_id) = line.split("\t")
-        if omim_type in ('gene', 'gene/phenotype') and hgnc_symbol != '-':
+        if omim_type in ('gene', 'gene/phenotype') and hgnc_symbol:
             symbol_of[file_omim_id] = hgnc_symbol
             ensembl_gene_id_of[file_omim_id] = ensembl_gene_id
         type_of[hgnc_symbol] = omim_type
@@ -151,7 +151,7 @@ def resolve_gene(omim_id):
     Args:
             omim_id (int): the omim id
 
-    Returns: on omom id match, official HGNC symbol if type of gene or gene/phenotype otherwise False
+    Returns: on omim morbid match, official HGNC symbol if type of gene or gene/phenotype otherwise False
 
     """
     global symbol_of

@@ -93,8 +93,8 @@ class Genenames(object):
         """
 
         data = self.get("fetch/symbol/%s" % hgnc_symbol)
-        #import json
-        #print(json.dumps(data, sort_keys=True, indent=4, separators=(',', ': ')))
+
+        official_symbol = None
         try:
             official_symbol = self._parse_official(data, omim_morbid)
         except (KeyError, IndexError) as e:
