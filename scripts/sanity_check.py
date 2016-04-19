@@ -171,11 +171,13 @@ def check_duplicates(lines):
     for line in lines:
         for field_key in fields.keys():
             if line[field_key] in fields[field_key]:
-                warn("'{}' already listed at #{}".format(line[field_key], fields[field_key][ line[field_key] ]))
+                if (fields[field_key][ line[field_key] ] + 1) != line_nr:
+                    warn("'{}' already listed at #{}".format(line[field_key], fields[field_key][ line[field_key] ]))
             fields[field_key][ line[field_key] ] = line_nr
 
         if line['Gene_start'] in Gene_start and line['Gene_stop'] in Gene_stop:
-            warn("'{}-{}' already listed at #{}".format(line['Gene_start'], line['Gene_stop'], Gene_start[ line['Gene_start'] ]))
+            if (Gene_start[ line['Gene_start'] ] + 1) != line_nr:
+                warn("'{}-{}' already listed at #{}".format(line['Gene_start'], line['Gene_stop'], Gene_start[ line['Gene_start'] ]))
         Gene_start[ line['Gene_start'] ] = line_nr
         Gene_stop[  line['Gene_stop']  ] = line_nr
 
