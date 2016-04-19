@@ -25,6 +25,7 @@ def main(argv):
 
     versions = {} # Filename => { Database => { 'Version': Version, 'Date': Date } }
     data = {} # HGNC_symbol => {'HGNC_symbol' => '', 'EnsEMBLid' => [], 'Databases' => () }
+
     for infile in args.infiles:
         versions[infile.name] = {}
         for line in infile:
@@ -93,7 +94,7 @@ def main(argv):
 
     print('Chromosome	HGNC_symbol	Ensembl_gene_id	Clinical_db_gene_annotation	Reduced_penetrance	Disease_associated_transcript	Phenotypic_disease_model	Genetic_disease_model	OMIM_morbid')
     for line in data.values():
-        #line['Databases'].append('FullList')
+        if len(databases) > 2: line['Databases'].append('FullList')
         line_dbs = ','.join(list(set(line['Databases'])))
         if line['dis_ass_trans'] == 'unknown': line['dis_ass_trans'] = ''
         if line['dis_ass_trans'] and line['dis_ass_trans'] != '#NA':
