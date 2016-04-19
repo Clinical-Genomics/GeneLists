@@ -32,6 +32,7 @@ def main(argv):
             if line.startswith('##'): continue # skip comments
             if line.startswith('#Chromosome'): # get the header
                 #Chromosome	Gene_start	Gene_stop	HGNC_symbol	Protein_name	Symptoms	Biochemistry	Imaging	Disease_trivial_name	Trivial_name_short	Phenotypic_disease_model	OMIM_morbid	Gene_locus	UniProt_id	Ensembl_gene_id	Ensemble_transcript_ID	Reduced_penetrance	Clinical_db_gene_annotation	Disease_associated_transcript	Ensembl_transcript_to_refseq_transcript	Gene_description	Genetic_disease_model
+                line = line.lstrip('#')
                 header = line.split("\t")
                 continue
 
@@ -40,12 +41,14 @@ def main(argv):
             line = dict(zip(header, line)) # get me a nice mapping
 
             hgnc_id = line['HGNC_symbol'].strip()
+            chromosome = line['Chromosome'].strip()
             phenotypic_disease_model = line['Phenotypic_disease_model'].strip() # keep manual annotations
             ensEMBLid = line['Ensembl_gene_id'].strip()
             red_pen = line['Reduced_penetrance'].strip()
             line_databases = line['Clinical_db_gene_annotation'].strip().split(',')
             dis_ass_trans = line['Disease_associated_transcript'].strip()
-            genetic_disease_model =  line['Genetic_disease_model'].strip() if 'Genetic_disease_model' in line else ''
+            genetic_disease_model = line['Genetic_disease_model'].strip() if 'Genetic_disease_model' in line else ''
+            omim_morbid = line['OMIM_morbid'].strip()
 
             # skip if we are whitelisting dbs
             if len(databases):
@@ -61,12 +64,14 @@ def main(argv):
 
             # fill
             data[hgnc_id]['HGNC_symbol'] = hgnc_id
+            data[hgnc_id]['Chromosome'] = chromosome
             data[hgnc_id]['EnsEMBLid'].append(ensEMBLid)
             data[hgnc_id]['Databases'] += line_databases
             data[hgnc_id]['red_pen'] = red_pen
             data[hgnc_id]['dis_ass_trans'] = dis_ass_trans
             data[hgnc_id]['Phenotypic_disease_model'] = phenotypic_disease_model
             data[hgnc_id]['genetic_disease_model'] = genetic_disease_model
+            data[hgnc_id]['OMIM_morbid'] = omim_morbid.split(':')[1] if omim_morbid else ''
 
             # fill versions dict
             for database in line_databases:
@@ -86,17 +91,17 @@ def main(argv):
         for database, version_date in database_version.items():
             print('##Database=<ID=%s,Version=%s,Date=%s,Acronym=%s,Complete_name=%s,Clinical_db_genome_build=GRCh37.p13' % (os.path.basename(filename), version_date['Version'], version_date['Date'], database, version_date['Fullname']))
 
-    print('HGNC_symbol	Ensembl_gene_id	Clinical_db_gene_annotation	Reduced_penetrance	Disease_associated_transcript	Phenotypic_disease_model	Genetic_disease_model')
+    print('Chromosome	HGNC_symbol	Ensembl_gene_id	Clinical_db_gene_annotation	Reduced_penetrance	Disease_associated_transcript	Phenotypic_disease_model	Genetic_disease_model	OMIM_morbid')
     for line in data.values():
-        line['Databases'].append('FullList')
+        #line['Databases'].append('FullList')
         line_dbs = ','.join(list(set(line['Databases'])))
-        if line['dis_ass_trans'] == 'unknown': line['dis_ass_trans'] = '#NA'
+        if line['dis_ass_trans'] == 'unknown': line['dis_ass_trans'] = ''
         if line['dis_ass_trans'] and line['dis_ass_trans'] != '#NA':
             dis_ass_trans = '%s:%s' % (line['HGNC_symbol'], line['dis_ass_trans'])
         else:
             dis_ass_trans = line['dis_ass_trans']
         for ensEMBLid in set(line['EnsEMBLid']):
-            print('%s\t%s\t%s\t%s\t%s\t%s\t%s' % (line['HGNC_symbol'], ensEMBLid, line_dbs, line['red_pen'], dis_ass_trans, line['Phenotypic_disease_model'], line['genetic_disease_model']))
+            print('\t'.join( (line['Chromosome'], line['HGNC_symbol'], ensEMBLid, line_dbs, line['red_pen'], dis_ass_trans, line['Phenotypic_disease_model'], line['genetic_disease_model'], line['OMIM_morbid'])))
 
 if __name__ == '__main__':
     main(sys.argv[1:])

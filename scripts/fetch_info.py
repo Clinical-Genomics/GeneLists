@@ -138,6 +138,7 @@ def cache_mim2gene(mim2gene_file=os.path.dirname(os.path.abspath(__file__))+os.p
     mim2gene_fh = open(mim2gene_file, 'r')
     lines = ( line for line in mim2gene_fh )
     for line in lines:
+        if line.startswith('#'): continue
         (file_omim_id, omim_type, gene_id, hgnc_symbol, ensembl_gene_id) = line.split("\t")
         if omim_type in ('gene', 'gene/phenotype') and hgnc_symbol != '-':
             symbol_of[file_omim_id] = hgnc_symbol
@@ -521,8 +522,12 @@ def add_official_hgnc_symbol(data):
     """
     genenames = Genenames()
     for line in data:
-        official_symbol = genenames.official(line['HGNC_symbol'])
+        OMIM_morbid = None
+        if 'OMIM_morbid' in line and line['OMIM_morbid']:
+            OMIM_morbid = line['OMIM_morbid']
 
+        HGNC_symbol = line['HGNC_symbol'].split(',')[0] # take the first symbol
+        official_symbol = genenames.official(HGNC_symbol, OMIM_morbid)
         if official_symbol:
             if official_symbol != line['HGNC_symbol']:
                 p('Add official HGNC symbol %s' % official_symbol)
@@ -540,7 +545,7 @@ def download_mim2gene():
     Returns (str): full path and filename of the mim2gene.txt
     """
     filename = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + 'mim2gene.txt'
-    (dl_filename, headers) = urlretrieve('ftp://anonymous:kennybilliau%40scilifelab.se@ftp.omim.org/OMIM/mim2gene.txt', filename)
+    (dl_filename, headers) = urlretrieve('http://omim.org/static/omim/data/mim2gene.txt', filename)
     return dl_filename
 
 def query_omim(data):

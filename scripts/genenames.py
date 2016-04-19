@@ -41,49 +41,75 @@ class Genenames(object):
         return res.json()
 
     def aliases(self, hgnc_symbol):
-      """Fetches the HGNC aliases
+        """Fetches the HGNC aliases
 
-      Args:
-          hgnc_symbol (str): an HGNC symbol.
+        Args:
+            hgnc_symbol (str): an HGNC symbol.
 
-      Returns (list): a list of HGNC symbols
+        Returns (list): a list of HGNC symbols
 
-      """
-      data = self.get("fetch/symbol/%s" % hgnc_symbol)
-      try:
-          aliases = data['response']['docs'][0]['alias_symbol']
-      except KeyError:
-          return None
-      except IndexError:
-          return None
-
-      return aliases
-
-    def official(self, hgnc_symbol):
-      """Fetches the HGNC official symbol.
-
-      Args:
-          hgnc_symbol (str): an HGNC symbol.
-
-      Returns (str): the official HGNC symbol
-
-      """
-      data = self.get("fetch/symbol/%s" % hgnc_symbol)
-      #import json
-      #print(json.dumps(data, sort_keys=True, indent=4, separators=(',', ': ')))
-      try:
-        official_symbol = data['response']['docs'][0]['symbol']
-      except (KeyError, IndexError) as e:
-
-        # ok, no results found, maybe try its previous symbol?
-        data = self.get("fetch/prev_symbol/%s" % hgnc_symbol)
-
+        """
+        data = self.get("fetch/symbol/%s" % hgnc_symbol)
         try:
-          official_symbol = data['response']['docs'][0]['symbol']
-        except (KeyError, IndexError) as e:
-          return None
+            aliases = data['response']['docs'][0]['alias_symbol']
+        except KeyError:
+            return None
+        except IndexError:
+            return None
 
-      return official_symbol
+        return aliases
+
+    def _parse_official(self, data, omim_morbid=None):
+        """Parses the official HGNC symbol out of a JSON result set
+        fetched from genenames.org.
+        On missing OMIM morbid number, the first HGNC symbol is returned
+
+        Args:
+            data (json): result set from querying rest.genenames.org/fetch/symbol/%s
+            omim_morbid (str, opt): an option omim morbid number
+
+        Returns (str): the official HGNC identifier
+
+        """
+        if omim_morbid == None:
+            return data['response']['docs'][0]['symbol']
+
+        for symbols in data['response']['docs']:
+            if str(symbols['omim_id'][0]) == str(omim_morbid):
+                return symbols['symbol']
+
+        return None
+
+    def official(self, hgnc_symbol, omim_morbid=None):
+        """Fetches the HGNC official symbol for this HGNC symbol. On multiple matches,
+        it is better to also provide the OMIM morbid number.
+
+        Args:
+            hgnc_symbol (str): an HGNC symbol.
+            omim_morbid (str, opt): the associated omim morbid number
+
+        Returns (str): the official HGNC symbol
+
+        """
+
+        data = self.get("fetch/symbol/%s" % hgnc_symbol)
+        #import json
+        #print(json.dumps(data, sort_keys=True, indent=4, separators=(',', ': ')))
+        try:
+            official_symbol = self._parse_official(data, omim_morbid)
+        except (KeyError, IndexError) as e:
+            pass
+
+        if official_symbol == None:
+            # ok, no results found, maybe try its previous symbol?
+            data = self.get("fetch/prev_symbol/%s" % hgnc_symbol)
+
+            try:
+                official_symbol = self._parse_official(data, omim_morbid)
+            except (KeyError, IndexError) as e:
+                return None
+
+        return official_symbol
 
 if __name__ == '__main__':
-  main(sys.argv[1:])
+    main(sys.argv[1:])
