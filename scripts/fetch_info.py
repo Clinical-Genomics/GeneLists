@@ -701,7 +701,7 @@ def main(argv):
 
     # fill in missing blanks
     global conn
-    conn = pymysql.connect(host='ensembldb.ensembl.org', port=5306, user='anonymous', db='homo_sapiens_core_75_37')
+    conn = pymysql.connect(host='localhost', port=3306, user='anonymous', db='homo_sapiens_core_75_37')
     ensembld_data = query(aliased_data, try_hgnc_again=True)
 
     # put the official HGNC symbol
