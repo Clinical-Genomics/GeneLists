@@ -8,6 +8,7 @@ import argparse
 import re
 import os
 from urllib.request import urlretrieve, Request, urlopen
+from collections import Counter
 
 from .omim import OMIM
 from .ensembl import Ensembl
@@ -368,6 +369,8 @@ def cleanup(data):
             # replace white space seperated comma's with just a comma
             # replace ; with comma
             # remove leading and trailing white space
+            # remove trailing commas
+            # collapse multiple commas
 
     Args:
             data (list of lists): Inner list represents a row in a gene list
@@ -381,7 +384,9 @@ def cleanup(data):
                 if line[key] == '#NA':
                     line[key] = ''
                 else:
-                    line[key] = re.sub(r'\s*[,;]\s*', ',', value.strip())
+                    line[key] = re.sub(r'\s*[,;]\s*', ',', value.strip()) # rm whitespace
+                    line[key] = re.sub(r',+', ',', line[key]) # collapse commas
+                    line[key] = line[key].rstrip(',') # rm trailing commas
         yield line
 
 def list2dict(header, data):
@@ -511,7 +516,8 @@ def put_official_hgnc_symbol(data):
         yield line
 
 def add_official_hgnc_symbol(data):
-    """Prepend the official HGNC symbol fetched from genenames.org to the HGNC_symbol.
+    """Add the official HGNC symbol fetched from genenames.org to the field Official_HGNC_symbol.
+    Also prepend the official HGNC symbol to the HGNC_symbol field.
 
     Args:
             data (list of dicts): Inner dict represents a row in a gene list
@@ -522,19 +528,32 @@ def add_official_hgnc_symbol(data):
     """
     genenames = Genenames()
     for line in data:
-        OMIM_morbid = None
+        # skip if we already have the OMIM_morbid (which points to the official symbol).
         if 'OMIM_morbid' in line and line['OMIM_morbid']:
-            OMIM_morbid = line['OMIM_morbid']
+            yield line
+            continue
+               
+        #HGNC_symbol = line['HGNC_symbol'].split(',')[-1] # take the last symbol
+        official_symbols = []
+        HGNC_symbols = line['HGNC_symbol'].split(',') # take the last symbol
+        for HGNC_symbol in HGNC_symbols:
+            official_symbol = genenames.official(HGNC_symbol)
+            if official_symbol:
+                if official_symbol not in HGNC_symbols:
+                    p('Add official HGNC symbol %s' % official_symbol)
+                    line['HGNC_symbol'] = ','.join( (official_symbol, line['HGNC_symbol']) )
+                official_symbols.append(official_symbol)
+            else:
+                official_symbols.append(HGNC_symbol)
 
-        HGNC_symbol = line['HGNC_symbol'].split(',')[0] # take the first symbol
-        official_symbol = genenames.official(HGNC_symbol, OMIM_morbid)
-        if official_symbol:
-            if official_symbol != line['HGNC_symbol']:
-                p('Add official HGNC symbol %s' % official_symbol)
-                line['HGNC_symbol'] = ','.join( (official_symbol, line['HGNC_symbol']) )
-            line['Official_HGNC_symbol'] = official_symbol
-        else:
-            line['Official_HGNC_symbol'] = line['HGNC_symbol']
+        p('Official symbols %s' % official_symbols)
+        # ok, now we have several 'official' symbols. Take the most present one.
+        # Create a Counter object, which will 'count' the items in the list and present a list with (value, count) tuples.
+        # Sort that list ascendingly.
+        sorted_count = sorted(Counter(official_symbols).items(), key=lambda x: x[1])
+        # take the last element (the most present one) and of that the value of the tuple
+        line['Official_HGNC_symbol'] = sorted_count[-1][0]
+        p('Took %s as official symbol' % line['Official_HGNC_symbol'])
         yield line
 
 def download_mim2gene():
@@ -560,47 +579,53 @@ def query_omim(data):
 
     omim = OMIM(api_key='<fill in key>')
     for line in data:
-        if 'HGNC_symbol' in line and 'Chromosome' in line:
+        if 'OMIM_morbid' in line and 'Chromosome' in line:
+            entry = omim.gene(line['OMIM_morbid'])
+        elif 'HGNC_symbol' in line and 'Chromosome' in line:
             entry = omim.gene(line['Official_HGNC_symbol'])
+        else:
+            yield line
+            continue
 
-            phenotypic_disease_models = omim.parse_phenotypic_disease_models(entry['phenotypes'], line['Chromosome'])
+        phenotypic_disease_models = omim.parse_phenotypic_disease_models(entry['phenotypes'], line['Chromosome'])
 
-            # extract the inheritance model
-            line_phenotypic_disease_models = []
+        # extract the inheritance model
+        line_phenotypic_disease_models = []
 
-            # if any inheritance models and omim numbers are present, use them!
-            for omim_number, inheritance_models in phenotypic_disease_models.items():
-                if omim_number is not None:
-                    inheritance_models_str = ''
+        # if any inheritance models and omim numbers are present, use them!
+        for omim_number, inheritance_models in phenotypic_disease_models.items():
+            if omim_number is not None:
+                inheritance_models_str = ''
 
-                    if inheritance_models is not None:
-                        inheritance_models_str = '>' + '/'.join(inheritance_models)
+                if inheritance_models is not None:
+                    inheritance_models_str = '>' + '/'.join(inheritance_models)
 
-                    line_phenotypic_disease_models.append('%s%s' % ( \
-                        omim_number,
-                        inheritance_models_str
-                        )
+                line_phenotypic_disease_models.append('%s%s' % ( \
+                    omim_number,
+                    inheritance_models_str
                     )
+                )
 
-            if len(line_phenotypic_disease_models) > 0:
-                line['Phenotypic_disease_model'] = '%s:%s' % (line['HGNC_symbol'], '|'.join(line_phenotypic_disease_models))
-            else:
-                line['Phenotypic_disease_model'] = ''
+        if len(line_phenotypic_disease_models) > 0:
+            line['Phenotypic_disease_model'] = '%s:%s' % (line['HGNC_symbol'], '|'.join(line_phenotypic_disease_models))
+        else:
+            line['Phenotypic_disease_model'] = ''
 
-            # add OMIM morbid
-            if entry['mim_number'] is not None:
-                if 'OMIM_morbid' in line \
-                and len(line['OMIM_morbid']) > 0 \
-                and str(line['OMIM_morbid']) != line['HGNC_symbol'] + ':' + str(entry['mim_number']) \
-                and str(line['OMIM_morbid']) != str(entry['mim_number']):
-                    p('%s > %s client OMIM number differs from OMIM query' % (line['OMIM_morbid'], entry['mim_number']))
-                line['OMIM_morbid'] = '%s:%s' % (line['HGNC_symbol'], entry['mim_number'])
+        # add OMIM morbid
+        if entry['mim_number'] is not None:
+            if 'OMIM_morbid' in line \
+            and len(line['OMIM_morbid']) > 0 \
+            and str(line['OMIM_morbid']) != line['HGNC_symbol'] + ':' + str(entry['mim_number']) \
+            and str(line['OMIM_morbid']) != str(entry['mim_number']):
+                p(line['Official_HGNC_symbol'])
+                p('%s %s > %s client OMIM number differs from OMIM query' % (line['HGNC_symbol'], line['OMIM_morbid'], entry['mim_number']))
+            line['OMIM_morbid'] = '%s:%s' % (line['HGNC_symbol'], entry['mim_number'])
 
-            # add Gene_locus
-            if entry['gene_location'] is not None:
-                if 'Gene_locus' in line and len(line['Gene_locus']) > 0 and line['Gene_locus'] != entry['gene_location']:
-                    p('%s > %s client Gene locus differs from OMIM query' % (line['Gene_locus'], entry['gene_location']))
-                line['Gene_locus'] = entry['gene_location']
+        # add Gene_locus
+        if entry['gene_location'] is not None:
+            if 'Gene_locus' in line and len(line['Gene_locus']) > 0 and line['Gene_locus'] != entry['gene_location']:
+                p('%s > %s client Gene locus differs from OMIM query' % (line['Gene_locus'], entry['gene_location']))
+            line['Gene_locus'] = entry['gene_location']
 
         yield line
 

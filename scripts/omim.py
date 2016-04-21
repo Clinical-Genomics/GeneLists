@@ -162,11 +162,13 @@ class OMIM(object):
     # no phenotypes found, return something
     return format_entry(entries[0]['entry'])
 
-  def search_gene(self, hgnc_symbol, include=('geneMap', 'dates')):
+  def search_gene(self, hgnc_symbol=None, mim_number=None, include=('geneMap', 'dates')):
     """Search for MIM number for a HGNC approved symbol.
+    hgnc_symbol or mim_number need to be provided. hgnc_symbol takes precedence.
 
     Args:
-      hgnc_symbol (str): HGNC approved symbol
+      hgnc_symbol (str, opt): HGNC approved symbol.
+      mim_number (str, opt): the omim morbid number.
       include (list, optional): additional sections to include
 
     Returns:
@@ -175,7 +177,10 @@ class OMIM(object):
     url, params = self.base('entry/search')
 
     #params['search'] = "%s" % hgnc_symbol # leaving out approved_gene_symbol to get a match on aliases
-    params['search'] = "approved_gene_symbol:%s" % hgnc_symbol
+    if mim_number:
+        params['search'] = "mim_number:%s" % mim_number
+    else:
+        params['search'] = "approved_gene_symbol:%s" % hgnc_symbol
     params['include'] = include
 
     res = False
