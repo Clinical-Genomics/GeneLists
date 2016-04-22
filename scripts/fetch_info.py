@@ -528,16 +528,15 @@ def add_official_hgnc_symbol(data):
     """
     genenames = Genenames()
     for line in data:
-        # skip if we already have the OMIM_morbid (which points to the official symbol).
+        OMIM_morbid=None
         if 'OMIM_morbid' in line and line['OMIM_morbid']:
-            yield line
-            continue
-               
+            OMIM_morbid=line['OMIM_morbid']
+
         #HGNC_symbol = line['HGNC_symbol'].split(',')[-1] # take the last symbol
         official_symbols = []
         HGNC_symbols = line['HGNC_symbol'].split(',') # take the last symbol
         for HGNC_symbol in HGNC_symbols:
-            official_symbol = genenames.official(HGNC_symbol)
+            official_symbol = genenames.official(HGNC_symbol, OMIM_morbid)
             if official_symbol:
                 if official_symbol not in HGNC_symbols:
                     p('Add official HGNC symbol %s' % official_symbol)
@@ -580,9 +579,9 @@ def query_omim(data):
     omim = OMIM(api_key='<fill in key>')
     for line in data:
         if 'OMIM_morbid' in line and 'Chromosome' in line:
-            entry = omim.gene(line['OMIM_morbid'])
+            entry = omim.gene(mim_number=line['OMIM_morbid'])
         elif 'HGNC_symbol' in line and 'Chromosome' in line:
-            entry = omim.gene(line['Official_HGNC_symbol'])
+            entry = omim.gene(hgnc_symbol=line['Official_HGNC_symbol'])
         else:
             yield line
             continue
@@ -617,7 +616,6 @@ def query_omim(data):
             and len(line['OMIM_morbid']) > 0 \
             and str(line['OMIM_morbid']) != line['HGNC_symbol'] + ':' + str(entry['mim_number']) \
             and str(line['OMIM_morbid']) != str(entry['mim_number']):
-                p(line['Official_HGNC_symbol'])
                 p('%s %s > %s client OMIM number differs from OMIM query' % (line['HGNC_symbol'], line['OMIM_morbid'], entry['mim_number']))
             line['OMIM_morbid'] = '%s:%s' % (line['HGNC_symbol'], entry['mim_number'])
 

@@ -147,8 +147,8 @@ class OMIM(object):
 
     return phenotypic_disease_model
 
-  def gene(self, hgnc_symbol):
-    entries = self.search_gene(hgnc_symbol)
+  def gene(self, hgnc_symbol=None, mim_number=None):
+    entries = self.search_gene(hgnc_symbol=hgnc_symbol, mim_number=mim_number)
 
     # don't check further if we don't have anything
     if not entries:
@@ -178,7 +178,7 @@ class OMIM(object):
 
     #params['search'] = "%s" % hgnc_symbol # leaving out approved_gene_symbol to get a match on aliases
     if mim_number:
-        params['search'] = "mim_number:%s" % mim_number
+        params['search'] = "number:%s" % mim_number
     else:
         params['search'] = "approved_gene_symbol:%s" % hgnc_symbol
     params['include'] = include
