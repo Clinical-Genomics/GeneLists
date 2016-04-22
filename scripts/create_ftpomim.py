@@ -121,8 +121,8 @@ def main(argv):
 
     omimfile = args.infile
     database = args.database
-    raw_data = ( line.strip() for line in omimfile) # sluuuurp
-    parsable_data = ( line.split("|") for line in raw_data )
+    raw_data = ( line.strip() for line in omimfile if not line.startswith('#') ) # sluuuurp
+    parsable_data = ( line.split("\t") for line in raw_data )
 
     print_header()
     [ print_line(line) for line in \
