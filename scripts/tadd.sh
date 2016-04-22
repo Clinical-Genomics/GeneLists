@@ -29,7 +29,10 @@ cd $GL_PATH
 set +e
 FULL_TAG=$(git describe --abbrev=0 --match "*${GENELIST_SHORTNAME}*" 2> /dev/null)
 if [[ $? -ne 0 ]]; then # on fail, get the last tag
-    TAG=$(git describe --abbrev=0 | tail -1 2> /dev/null)
+    TAG=$(git describe --abbrev=0 --match "[0-9]*.[0-9]*" 2> /dev/null)
+    if [[ $? -ne 0 ]]; then
+        TAG=0.0
+    fi
 else
     IFS=- read -a TAG_PARTS <<< "$FULL_TAG"
     TAG=${TAG_PARTS[1]}
@@ -105,11 +108,11 @@ git push
 git push --tags origin
 
 # update clinicalgenomics.se
-cd $SCRIPT_PATH/..
-python -m scripts.update_cg $(dirname $(dirname $(readlink -nm $GENELIST)))/cust00[01234]/cust*.txt > ~/git/clinical-genomics.github.io/_topics/namnpagenlistor.md
-cd ~/git/clinical-genomics.github.io
-git pull
-git add _topics/namnpagenlistor.md
-git commit -m "Update to $(basename $GENELIST)"
-git push
+#cd $SCRIPT_PATH/..
+#python -m scripts.update_cg $(dirname $(dirname $(readlink -nm $GENELIST)))/cust00[01234]/cust*.txt > ~/git/clinical-genomics.github.io/_topics/namnpagenlistor.md
+#cd ~/git/clinical-genomics.github.io
+#git pull
+#git add _topics/namnpagenlistor.md
+#git commit -m "Update to $(basename $GENELIST)"
+#git push
 cd $OLD_WD
