@@ -29,7 +29,7 @@ cd $GL_PATH
 set +e
 FULL_TAG=$(git describe --abbrev=0 --match "*${GENELIST_SHORTNAME}*" 2> /dev/null)
 if [[ $? -ne 0 ]]; then # on fail, get the last tag
-    TAG=$(git describe --abbrev=0 --match "[0-9]*.[0-9]*" 2> /dev/null)
+    TAG=$(git tag --sort version:refname | grep '^[0-9]\+\.[0-9]\+$' | tail -1 2> /dev/null)
     if [[ $? -ne 0 ]]; then
         TAG=0.0
     fi
@@ -59,8 +59,8 @@ BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD
 cd $OLD_WD
 
 # say something
-read -p "Commit message: " MSG
-#MSG="Update $GENELIST_NAME with OMIM"
+#read -p "Commit message: " MSG
+MSG="Update $GENELIST_NAME with OMIM"
 
 cd "$(dirname $GENELIST)"
 
