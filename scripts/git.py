@@ -6,13 +6,14 @@ from datetime import datetime
 import subprocess
 import os
 
-def getgittag(filename, date=None):
+def getgittag(filename, date=None, full_tag=False):
     """Gets the current version of a gene list. If date is provided,
     get commit on or before that date.
 
     Args:
         filename (str): the name of the gene list
         date (date, optional): a git parsable date, e.g. Mon Feb 9 14:19:16 2015 or 2015-02-09
+        full_tag (bool, optional): if True, returns full tag, otherwise just version
 
     Returns (str): a version (tag) of the gene list
 
@@ -31,6 +32,8 @@ def getgittag(filename, date=None):
 
     os.chdir(cwd)
 
+    if not full_tag and '-' in tag:
+        return tag.split('-', 1)[-1] # split ony the first occurence of '-'
     return tag
 
 def getgitlastmoddate(filename, date_format='%Y%m%d'):
