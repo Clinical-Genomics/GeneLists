@@ -5,6 +5,7 @@ import logging
 import click
 
 from .modules.genelist import Genelist
+from .modules.sanity import Sanity 
 
 #logger = logging.getLogger(__name__)
 
@@ -40,7 +41,8 @@ def fetch(infile, outfile, zero, verbose, errors, download_mim2gene, mim2gene):
 def validate(genelist):
     """Validate a genelist. Will print out messages as to what is wrong."""
 
-    print(genelist)
+    sanity = Sanity()
+    sanity.check(genelist)
 
 def setup_logging(level='INFO'):
     """Setup the loggin for this package
