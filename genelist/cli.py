@@ -6,6 +6,7 @@ import click
 
 from .modules.genelist import Genelist
 from .modules.sanity import Sanity 
+from .modules.panels import get_panels
 
 #logger = logging.getLogger(__name__)
 
@@ -43,6 +44,13 @@ def validate(genelist):
 
     sanity = Sanity()
     sanity.check(genelist)
+
+@run.command()
+@click.argument('genelist', nargs=1, type=click.Path(exists=True))
+def panels(genelist):
+    """List panels in a gene list """
+
+    print('\n'.join(get_panels(genelist)))
 
 def setup_logging(level='INFO'):
     """Setup the loggin for this package
