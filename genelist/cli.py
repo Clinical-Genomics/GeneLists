@@ -7,6 +7,7 @@ import click
 from .modules.genelist import Genelist
 from .modules.sanity import Sanity 
 from .modules.panels import get_panels
+from .modules.merge import merge_panels
 
 #logger = logging.getLogger(__name__)
 
@@ -51,6 +52,20 @@ def panels(genelist):
     """List panels in a gene list """
 
     print('\n'.join(get_panels(genelist)))
+
+@run.command()
+@click.argument('infiles', nargs=-1, type=click.Path(exists=True))
+@click.option('--database', '-d', multiple=True, help='only take HGNC_symbols from this database.')
+def merge(infiles, database):
+    """ Merge gene lists. Will only output HGNC_symbol, EnsEMBL_gene_id and Database columns.
+
+    Args:
+        arg1 (TODO): TODO
+
+    Returns: TODO
+
+    """
+    merge_panels(infiles, database)
 
 def setup_logging(level='INFO'):
     """Setup the loggin for this package
