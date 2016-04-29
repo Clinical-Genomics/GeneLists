@@ -11,10 +11,6 @@ from ..utils.acronyms import Acronyms
 def merge_panels(infiles, databases):
     """ Merge the panels of gene lists into one list. """
 
-    databases = []
-    if len(databases):
-        databases = [db[0] for db in databases]
-
     acronyms = Acronyms(os.path.dirname(os.path.dirname(os.path.realpath(infiles[0].name))))
 
     versions = {} # Filename => { Database => { 'Version': Version, 'Date': Date } }

@@ -54,16 +54,13 @@ def panels(genelist):
     print('\n'.join(get_panels(genelist)))
 
 @run.command()
-@click.argument('infiles', nargs=-1, type=click.Path(exists=True))
+@click.argument('infiles', nargs=-1, required=True, type=click.File('r'))
 @click.option('--database', '-d', multiple=True, help='only take HGNC_symbols from this database.')
 def merge(infiles, database):
     """ Merge gene lists. Will only output HGNC_symbol, EnsEMBL_gene_id and Database columns.
 
     Args:
-        arg1 (TODO): TODO
-
-    Returns: TODO
-
+        infiles: paths to gene lists.
     """
     merge_panels(infiles, database)
 
