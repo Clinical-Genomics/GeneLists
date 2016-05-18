@@ -59,8 +59,8 @@ BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD
 cd $OLD_WD
 
 # say something
-read -p "Commit message: " MSG
-#MSG="Update $GENELIST_NAME with OMIM"
+#read -p "Commit message: " MSG
+MSG="Update $GENELIST_NAME with OMIM"
 
 cd "$(dirname $GENELIST)"
 
@@ -108,11 +108,11 @@ git push
 git push --tags origin
 
 # update clinicalgenomics.se
-cd $SCRIPT_PATH/..
-python -m scripts.update_cg $(dirname $(dirname $(readlink -nm $GENELIST)))/cust00[01234]/cust*.txt > ~/git/clinical-genomics.github.io/namnpagenlistor/index.html
-cd ~/git/clinical-genomics.github.io
-git pull
-git add namnpagenlistor/index.html
-git commit -m "Update to $(basename $GENELIST)"
-git push
+#cd $SCRIPT_PATH/..
+#python -m scripts.update_cg $(dirname $(dirname $(readlink -nm $GENELIST)))/cust00[01234]/cust*.txt > ~/git/clinical-genomics.github.io/_topics/namnpagenlistor.md
+#cd ~/git/clinical-genomics.github.io
+#git pull
+#git add _topics/namnpagenlistor.md
+#git commit -m "Update to $(basename $GENELIST)"
+#git push
 cd $OLD_WD

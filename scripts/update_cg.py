@@ -56,11 +56,8 @@ def main(argv):
             print('WARNING: {} not committed!'.format(infile.name))
             continue
         version = getgittag(infile.name, date=mod_date) # get version on that date
-        if '-' in version: # this is a new tag with the GL name included
-            version = version.split('-')[1]
         full_name = acronyms[database]
         panels = acronyms.get_panels_of(database)
-        panels = [ panel for panel in panels if panel != 'FullList' ]
         panels = full_name if len(panels) == 1 else panels_2_html(panels, acronyms)
         versions[database] = {
             'Version': version,
@@ -69,117 +66,20 @@ def main(argv):
             'Databas': database,
         }
 
-    print("""<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>Clinical Genomics customer portal</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Public customer portal at SciLifeLab Clinical Genomics.
-">
-  <meta name="theme-color" content="#ef7c00">
-  <link rel="canonical" href="http://www.clinicalgenomics.se/namnpagenlistor/">
+    print("""---
+layout: base
+permalink: /namnpagenlistor/
+title: Namn på genlistor
+---
 
-  <!-- Fonts -->
-  <link href="http://fonts.googleapis.com/css?family=Source+Sans+Pro:400,700,400italic" rel="stylesheet" type="text/css">
-
-  <!-- Custom CSS -->
-  <link rel="stylesheet" href="/assets/css/style.css">
-</head>
-
-
-<body>
-
-  <aside class="cg-sidebar">
-    <div class="cg-sidebar-header">
-      <div class="cg-logo">
-        <div class="cg-logo-icon">
-          <img src="/assets/img/cg-logo.svg"
-               alt="Clinical Genomics logo">
-        </div>
-        <div class="cg-logo-label">
-          <a href="/" class="cg-logo-label-title">Clinical Genomics</a>
-          <div class="cg-logo-label-subtitle">a SciLifeLab facility</div>
-        </div>
-      </div>
-
-      <div class="cg-sheet ticket-sheet">
-        <a href="https://clinical-scilifelab.supportsystem.com/open.php"
-           class="cg-sheet-button">
-          Öppna ny ticket
-        </a>
-        <a href="https://clinical-scilifelab.supportsystem.com/view.php"
-           class="cg-sheet-button">
-          Kontrollera ticketstatus
-        </a>
-      </div>
-    </div>
-    <div class="cg-sidebar-body">
-      <div class="cg-list">
-          <a href="/analyser/" class="cg-list-item ">
-            Analyser
-          </a>
-          <a href="/bestallningar/" class="cg-list-item ">
-            Beställningar
-          </a>
-          <a href="/dataleverans/" class="cg-list-item ">
-            Dataleveranser
-          </a>
-          <a href="/kontakt/" class="cg-list-item ">
-            Kontakt
-          </a>
-          <a href="/namnpagenlistor/" class="cg-list-item current">
-            Namn på genlistor
-          </a>
-          <a href="/provkrav/" class="cg-list-item ">
-            Krav på prover
-          </a>
-      </div>
-    </div>
-    <div class="cg-sidebar-footer">
-      &copy; SciLifeLab 2015
-    </div>
-  </aside>
-
-  <main class="cg-content">
-    <div class="cg-main">
-      <div class="cg-sidebar-toogle">Meny</div>
-
-      <h1 id="namn-p-genlistor">Namn på genlistor</h1>
-    """)
-
-    print("""<table>
-    <thead>
-        <tr>
-    """)
+# Namn på genlistor
+""")
 
     keys = ['Databas', 'Beskrivning', 'Version', 'Datum']
-    print('<th>%s</th>' % '</th><th>'.join(keys))
-
-    print("""
-        </tr>
-    </thead>
-    <tbody>
-    """)
+    print('|%s|' % '|'.join(keys))
+    print('|%s' % ('---|' * len(keys)))
     for database in sorted(versions.keys()):
-        print('<tr>')
-        print('<th>%s</th>' % '</th><th>'.join([ versions[database][key] for key in keys ]))
-        print('</tr>')
-
-    print("""
-  </tbody>
-</table>
-
-    </div>
-  </main>
-
-  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
-  <script src="/assets/js/main.js"></script>
-
-</body>
-</html>
-    """)
+        print('|%s|' % '|'.join([ versions[database][key] for key in keys ]))
 
 if __name__ == '__main__':
     main(sys.argv[1:])
