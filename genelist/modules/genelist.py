@@ -600,8 +600,8 @@ class Genelist(object):
         for line in data:
             uniprot_ids = self.delimiter.join(genenames.uniprot(line['Official_HGNC_symbol']))
             if len(genenames.uniprot(line['Official_HGNC_symbol'])) > 1:
-                print('UNIPROT ' + genenames.uniprot(line['Official_HGNC_symbol']))
-            if line['UniProt_id']:
+                self.p('Multiple UniProt IDs: ' + ','.join(genenames.uniprot(line['Official_HGNC_symbol'])))
+            if 'UniProt_id' in line and line['UniProt_id']:
                 self.p('Replaced Uniprot ID %s with %s' % (line['UniProt_id'], uniprot_ids))
             line['UniProt_id'] = uniprot_ids
 
@@ -613,9 +613,9 @@ class Genelist(object):
             refseq = self.delimiter.join(genenames.refseq(line['Official_HGNC_symbol']))
             if len(genenames.refseq(line['Official_HGNC_symbol'])) > 1:
                 print('REFSEQ ' + genenames.refseq(line['Official_HGNC_symbol']))
-            if line['Ensembl_transcript_to_refseq_transcript']:
-                self.p('Replaced RefSef %s with %s' % (line['Ensembl_transcript_to_refseq_transcript'], refseq))
-            line['Ensembl_transcript_to_refseq_transcript'] = refseq
+            if 'HGNC_RefSeq_NM' in line and line['HGNC_RefSeq_NM']:
+                self.p('Replaced HGNC_RefSeq_NM %s with %s' % (line['HGNC_RefSeq_NM'], refseq))
+            line['HGNC_RefSeq_NM'] = refseq
 
             yield line
 
@@ -765,13 +765,15 @@ class Genelist(object):
         aliased_data = self.add_official_hgnc_symbol(reduced_data)
 
         # add uniprot
+        uniprot_data = self.add_uniprot(aliased_data)
 
         # add refseq
+        refseq_data = self.add_refseq(uniprot_data)
 
         # fill in missing blanks
         self.conn = pymysql.connect(host='localhost', port=3306,
                                     user='anonymous', db='homo_sapiens_core_75_37')
-        ensembld_data = self.query(aliased_data, try_hgnc_again=True)
+        ensembld_data = self.query(refseq_data, try_hgnc_again=True)
 
         # put the official HGNC symbol
         hgnc_official_data = self.put_official_hgnc_symbol(ensembld_data)
