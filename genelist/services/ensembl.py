@@ -2,7 +2,8 @@
 # encoding: utf-8
 
 import pymysql
-import re
+
+from ..utils import cleanup_description
 
 class Ensembl:
 
@@ -27,24 +28,6 @@ class Ensembl:
 
         """
         cur = self.conn.cursor(pymysql.cursors.DictCursor)
-
-        def _cleanup_description(description):
-            """Remove the comment in the description and clean up invalid characters: ,:;|>
-
-            Args:
-                description (str): text to clean up
-
-            Returns: str or None
-
-            """
-            if description:
-                description = description.strip()
-                description = re.sub(r'\[.*\]', '', description)
-                description = re.sub(r'[,:;>| ]', '_', description)
-                if description.endswith('_'):
-                    description = description[:-1]
-                return description
-            return ''
 
         def _join_refseqs(transcripts):
             transcripts_refseqs = []
@@ -73,7 +56,7 @@ class Ensembl:
             # init
             Ensembl_gene_id = row['Ensembl_gene_id']
             line = { # keys: Ensembl_transcript_to_refseq_transcript, Gene_description, Gene_start, Gene_stop, Chromosome, HGNC_symbol, Ensembl_gene_id
-                'Gene_description': _cleanup_description(row['description']),
+                'Gene_description': cleanup_description(row['description']),
                 'Gene_start': row['Gene_start'],
                 'Gene_stop': row['Gene_stop'],
                 'Chromosome': row['Chromosome'],
@@ -95,7 +78,7 @@ class Ensembl:
                     transcripts = {}
                     Ensembl_gene_id = row['Ensembl_gene_id']
                     line = {
-                        'Gene_description': _cleanup_description(row['description']),
+                        'Gene_description': cleanup_description(row['description']),
                         'Gene_start': row['Gene_start'],
                         'Gene_stop': row['Gene_stop'],
                         'Chromosome': row['Chromosome'],

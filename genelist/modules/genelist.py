@@ -2,8 +2,8 @@
 # encoding: utf-8
 
 # TODO remove all HGNC symbol prefixes at start
-# TODO provide general clean up for string descriptions (e.g. ensembl._clean_description needs to be available for all fields)
 # TODO prepend the HGNC prefix once all info has been retireved
+# TODO move all services init to the constructor
 
 from __future__ import print_function
 import pymysql

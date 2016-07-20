@@ -7,6 +7,8 @@ import requests_cache
 import time
 import xmltodict
 
+from ..utils import cleanup_description
+
 class Uniprot(object):
     """Basic interface to the public UniProt API.
 
@@ -56,4 +58,4 @@ class Uniprot(object):
         except (KeyError, IndexError):
             return None
 
-        return info
+        return cleanup_description(info)
