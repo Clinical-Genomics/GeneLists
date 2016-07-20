@@ -71,7 +71,7 @@ class Ensembl:
                     if len(transcripts) == 0:
                         p(Ensembl_gene_id + ' has no transcripts!')
 
-                    line['Ensembl_transcript_to_refseq_transcript'] = '%s:%s' % (row['HGNC_symbol'], '|'.join(_join_refseqs(transcripts)))
+                    line['Ensembl_transcript_to_refseq_transcript'] = '|'.join(_join_refseqs(transcripts))
                     yield line
 
                     # reset
@@ -91,7 +91,7 @@ class Ensembl:
                 transcripts[ row['Transcript_ID'] ].append(row['RefSeq_ID'])
 
             # yield last one
-            line['Ensembl_transcript_to_refseq_transcript'] = '%s:%s' % (row['HGNC_symbol'], '|'.join(_join_refseqs(transcripts)))
+            line['Ensembl_transcript_to_refseq_transcript'] = '|'.join(_join_refseqs(transcripts))
             yield line
 
         """

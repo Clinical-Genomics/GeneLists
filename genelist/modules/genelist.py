@@ -1,8 +1,6 @@
 """ Provide all annotation functionality in one place."""
 # encoding: utf-8
 
-# TODO remove all HGNC symbol prefixes at start
-# TODO prepend the HGNC prefix once all info has been retireved
 # TODO move all services init to the constructor
 
 from __future__ import print_function
@@ -32,6 +30,16 @@ class Genelist(object):
                           'Ensembl_transcript_to_refseq_transcript', 'Gene_description',
                           'Genetic_disease_model', 'HGNC_RefSeq_NM', 'Uniprot_protein_name',
                           'Database_entry_version', 'Curator', 'Alias', 'Group_or_Pathway']
+
+        # columns that need a HGNC prefix
+        self.prefix_header = ['Protein_name',
+                          'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name',
+                          'Trivial_name_short',
+                          'Phenotypic_disease_model', 'OMIM_morbid', 'UniProt_id',
+                          'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Reduced_penetrance',
+                          #'Disease_associated_transcript',
+                          'Ensembl_transcript_to_refseq_transcript', 'Gene_description',
+                          'HGNC_RefSeq_NM', 'Uniprot_protein_name']
 
         self.delimiter = '|' # join element of a field
 
@@ -277,6 +285,29 @@ class Genelist(object):
                     break
                 HGNC_symbol_i += 1
 
+    def remove_hgnc_prefix(self, line):
+        """ Removes the prefixed HGNC symbol from all fields
+
+        Args
+            line (dict): representing the line and columns in a gene list.
+
+        Yields (dict):
+            a line with the prefixed HGNC identifiers removed
+        """
+
+        for column in self.gl_header:
+            if column in line:
+                re.sub(r'^.*?:', '', str(line[column]))
+        return line
+
+    def prepend_hgnc(self, data):
+        for line in data:
+            for column in self.prefix_header:
+                if column in line and line[column]:
+                    line[column] = '%s:%s' % (line['HGNC_symbol'], line[column])
+
+            yield line
+
     def query_transcripts(self, data):
         """Queries EnsEMBL for all transcripts.
 
@@ -295,8 +326,7 @@ class Genelist(object):
                     if transcripts is not None:
                         line.update(transcripts)
                         if len(line['Gene_description']) > 0:
-                            line['Gene_description'] = \
-                                '%s:%s' % (line['HGNC_symbol'], line['Gene_description'])
+                            line['Gene_description'] = line['Gene_description']
                 yield line
 
     def get_transcript(self, start, end, ensembl_gene_id=None, hgnc_id=None):
@@ -417,6 +447,7 @@ class Genelist(object):
                 # remove leading and trailing white space
                 # remove trailing commas
                 # collapse multiple commas
+                # remove prefixed HGNC symbol
 
         Args:
                 data (list of lists): Inner list represents a row in a gene list
@@ -433,6 +464,7 @@ class Genelist(object):
                         line[key] = re.sub(r'\s*[,;]\s*', ',', value.strip()) # rm whitespace
                         line[key] = re.sub(r',+', ',', line[key]) # collapse commas
                         line[key] = line[key].rstrip(',') # rm trailing commas
+                line = self.remove_hgnc_prefix(line)
             yield line
 
     def list2dict(self, header, data):
@@ -616,8 +648,8 @@ class Genelist(object):
                 if 'Uniprot_protein_name' in line and line['Uniprot_protein_name']:
                     self.p('Replaced Uniprot ID %s with %s' % (line['Uniprot_protein_name'], uniprot_description))
 
-            line['Uniprot_protein_name'] = '%s:%s' % (line['HGNC_symbol'], uniprot_description)
-            line['UniProt_id'] = '%s:%s' % (line['HGNC_symbol'], uniprot_ids_joined)
+            line['Uniprot_protein_name'] = uniprot_description
+            line['UniProt_id'] = uniprot_ids_joined
 
             yield line
 
@@ -629,7 +661,7 @@ class Genelist(object):
                 print('REFSEQ ' + genenames.refseq(line['Official_HGNC_symbol']))
             if 'HGNC_RefSeq_NM' in line and line['HGNC_RefSeq_NM']:
                 self.p('Replaced HGNC_RefSeq_NM %s with %s' % (line['HGNC_RefSeq_NM'], refseq))
-            line['HGNC_RefSeq_NM'] = '%s:%s' % (line['HGNC_symbol'], refseq)
+            line['HGNC_RefSeq_NM'] = refseq
 
             yield line
 
@@ -680,8 +712,7 @@ class Genelist(object):
                         inheritance_models_str))
 
             if len(line_phenotypic_disease_models) > 0:
-                line['Phenotypic_disease_model'] = '%s:%s' % \
-                    (line['HGNC_symbol'], '|'.join(line_phenotypic_disease_models))
+                line['Phenotypic_disease_model'] = '|'.join(line_phenotypic_disease_models)
             else:
                 line['Phenotypic_disease_model'] = ''
             # add OMIM morbid
@@ -692,7 +723,7 @@ class Genelist(object):
                 and str(line['OMIM_morbid']) != str(entry['mim_number']):
                     self.p('%s %s > %s client OMIM number differs from OMIM query' % \
                            (line['HGNC_symbol'], line['OMIM_morbid'], entry['mim_number']))
-                line['OMIM_morbid'] = '%s:%s' % (line['HGNC_symbol'], entry['mim_number'])
+                line['OMIM_morbid'] = entry['mim_number']
 
             # add Gene_locus
             if entry['gene_location'] is not None:
@@ -810,8 +841,11 @@ class Genelist(object):
         # at last, clean up the output
         cleaner_data = self.cleanup(munged_data)
 
+        # prepend the HGNC symbol to some fields
+        prefixed_data = self.prepend_hgnc(cleaner_data)
+
         # get all contigs
-        final_data = self.gather_contig(cleaner_data)
+        final_data = self.gather_contig(prefixed_data)
         print_data = []
         for line in final_data:
             if self.verbose:
