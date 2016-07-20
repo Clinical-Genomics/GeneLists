@@ -55,6 +55,8 @@ class Uniprot(object):
         data = self.get("%s.xml" % uniprot_id)
         try:
             info = data['uniprot']['entry']['protein']['recommendedName']['fullName']
+            if '#text' in info:
+                info = info['#text']
         except (KeyError, IndexError):
             return None
 
