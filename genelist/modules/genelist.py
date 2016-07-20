@@ -1,6 +1,10 @@
 """ Provide all annotation functionality in one place."""
 # encoding: utf-8
 
+# TODO remove all HGNC symbol prefixes at start
+# TODO provide general clean up for string descriptions (e.g. ensembl._clean_description needs to be available for all fields)
+# TODO prepend the HGNC prefix once all info has been retireved
+
 from __future__ import print_function
 import pymysql
 import argparse
@@ -12,6 +16,7 @@ from collections import Counter
 from ..services.omim import OMIM
 from ..services.ensembl import Ensembl
 from ..services.genenames import Genenames
+from ..services.uniprot import Uniprot
 
 class Genelist(object):
 
@@ -597,13 +602,22 @@ class Genelist(object):
 
     def add_uniprot(self, data):
         genenames = Genenames()
+        uniprot   = Uniprot()
         for line in data:
-            uniprot_ids = self.delimiter.join(genenames.uniprot(line['Official_HGNC_symbol']))
+            uniprot_ids = genenames.uniprot(line['Official_HGNC_symbol'])
+            uniprot_ids_joined = self.delimiter.join(uniprot_ids)
             if len(genenames.uniprot(line['Official_HGNC_symbol'])) > 1:
-                self.p('Multiple UniProt IDs: ' + ','.join(genenames.uniprot(line['Official_HGNC_symbol'])))
+                self.p('Multiple UniProt IDs: ' + uniprot_ids_joined)
             if 'UniProt_id' in line and line['UniProt_id']:
-                self.p('Replaced Uniprot ID %s with %s' % (line['UniProt_id'], uniprot_ids))
-            line['UniProt_id'] = uniprot_ids
+                self.p('Replaced Uniprot ID %s with %s' % (line['UniProt_id'], uniprot_ids_joined))
+
+            for uniprot_id in uniprot_ids:
+                uniprot_description = uniprot.fetch_description(uniprot_id)
+                if 'Uniprot_protein_name' in line and line['Uniprot_protein_name']:
+                    self.p('Replaced Uniprot ID %s with %s' % (line['Uniprot_protein_name'], uniprot_description))
+
+            line['Uniprot_protein_name'] = '%s:%s' % (line['HGNC_symbol'], uniprot_description)
+            line['UniProt_id'] = '%s:%s' % (line['HGNC_symbol'], uniprot_ids_joined)
 
             yield line
 
@@ -615,7 +629,7 @@ class Genelist(object):
                 print('REFSEQ ' + genenames.refseq(line['Official_HGNC_symbol']))
             if 'HGNC_RefSeq_NM' in line and line['HGNC_RefSeq_NM']:
                 self.p('Replaced HGNC_RefSeq_NM %s with %s' % (line['HGNC_RefSeq_NM'], refseq))
-            line['HGNC_RefSeq_NM'] = refseq
+            line['HGNC_RefSeq_NM'] = '%s:%s' % (line['HGNC_symbol'], refseq)
 
             yield line
 
