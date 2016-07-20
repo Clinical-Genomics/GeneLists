@@ -40,6 +40,24 @@ class Genenames(object):
 
         return res.json()
 
+    def fetch_symbol(self, hgnc_symbol, key):
+        """Fetches the HGNC symbol and information related to it.
+
+        Args:
+            hgnc_symbol (str): an HGNC symbol.
+            key (str): e.g. alias_symbol, uniprotids, refseqids
+
+        Returns (dict): result set.
+
+        """
+        data = self.get("fetch/symbol/%s" % hgnc_symbol)
+        try:
+            info = data['response']['docs'][0]
+        except (KeyError, IndexError):
+            return None
+
+        return info
+
     def aliases(self, hgnc_symbol):
         """Fetches the HGNC aliases
 
@@ -49,15 +67,29 @@ class Genenames(object):
         Returns (list): a list of HGNC symbols
 
         """
-        data = self.get("fetch/symbol/%s" % hgnc_symbol)
-        try:
-            aliases = data['response']['docs'][0]['alias_symbol']
-        except KeyError:
-            return None
-        except IndexError:
-            return None
+        return self.fetch_symbol(hgnc_symbol, 'alias_symbol')
 
-        return aliases
+    def uniprot(self, hgnc_symbol):
+        """Fetches the HGNC aliases
+
+        Args:
+            hgnc_symbol (str): an HGNC symbol.
+
+        Returns (list): a list of HGNC symbols
+
+        """
+        return self.fetch_symbol(hgnc_symbol, 'uniprot_ids')
+
+    def refseq(self, hgnc_symbol):
+        """Fetches the HGNC aliases
+
+        Args:
+            hgnc_symbol (str): an HGNC symbol.
+
+        Returns (list): a list of HGNC symbols
+
+        """
+        return self.fetch_symbol(hgnc_symbol, 'refseq_accession')
 
     def _parse_official(self, data, omim_morbid=None):
         """Parses the official HGNC symbol out of a JSON result set

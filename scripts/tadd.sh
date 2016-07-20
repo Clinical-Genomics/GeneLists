@@ -65,7 +65,7 @@ MSG="Update $GENELIST_NAME with OMIM"
 cd "$(dirname $GENELIST)"
 
 # get all panels
-PANELS=( $(python $SCRIPT_PATH/get_panels.py $GENELIST) )
+PANELS=( $(cd $SCRIPT_PATH/..; python -m genelist.cli panels $GENELIST) )
 echo ${PANELS[@]}
 TMP_GL=$(mktemp)
 

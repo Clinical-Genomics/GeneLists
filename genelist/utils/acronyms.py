@@ -22,6 +22,7 @@ class Acronyms(object):
         self.acronyms = {} # acro: long text
         self.panels   = {} # acro: list of panels (acro)
 
+        #for cust in glob.glob(base_dir + '/cust*'):
         for list_file in glob.glob(base_dir + '/*/LISTS'):
             f = open(list_file)
             for line in f.readlines():
@@ -53,22 +54,24 @@ class Acronyms(object):
 
                 self.panels[gl_name] = panels.keys()
 
-    def __getitem__(self,  acronym):
+    def __getitem__(self,  acronym, cust=None):
         """Retrieve the acronym description
 
         Args:
             acronym (str): a gene list/panel acronym
+            cust (str, None): name of the customer. Helps improve the search for the right acronym
 
         Returns: acronym description
 
         """
         return self.acronyms.get(acronym, '')
 
-    def get_panels_of(self, acronym):
+    def get_panels_of(self, acronym, cust=None):
         """Retrieve the panels of a gene list
 
         Args:
             acronym (str): a gene list acronym.
+            cust (str, None): name of the customer. Helps improve the search for the right acronym
 
         Returns: a list of panels (acronyms)
         """
