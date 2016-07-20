@@ -52,7 +52,7 @@ class Genenames(object):
         """
         data = self.get("fetch/symbol/%s" % hgnc_symbol)
         try:
-            info = data['response']['docs'][0]
+            info = data['response']['docs'][0][key]
         except (KeyError, IndexError):
             return None
 
