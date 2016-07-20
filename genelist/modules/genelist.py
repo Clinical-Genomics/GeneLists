@@ -28,6 +28,8 @@ class Genelist(object):
                           'Genetic_disease_model', 'HGNC_RefSeq_NM', 'Uniprot_protein_name',
                           'Database_entry_version', 'Curator', 'Alias', 'Group_or_Pathway']
 
+        self.delimiter = '|' # join element of a field
+
         # EnsEMBL connection
         self.conn = None
         self.verbose = False # to print or not to print
@@ -565,7 +567,6 @@ class Genelist(object):
         """
         genenames = Genenames()
         for line in data:
-            print(line)
             OMIM_morbid=None
             if 'OMIM_morbid' in line and line['OMIM_morbid']:
                 OMIM_morbid = line['OMIM_morbid']
@@ -591,6 +592,30 @@ class Genelist(object):
             # take the last element (the most present one) and of that the value of the tuple
             line['Official_HGNC_symbol'] = sorted_count[-1][0]
             self.p('Took %s as official symbol' % line['Official_HGNC_symbol'])
+
+            yield line
+
+    def add_uniprot(self, data):
+        genenames = Genenames()
+        for line in data:
+            uniprot_ids = self.delimiter.join(genenames.uniprot(line['Official_HGNC_symbol']))
+            if len(genenames.uniprot(line['Official_HGNC_symbol'])) > 1:
+                print('UNIPROT ' + genenames.uniprot(line['Official_HGNC_symbol']))
+            if line['UniProt_id']:
+                self.p('Replaced Uniprot ID %s with %s' % (line['UniProt_id'], uniprot_ids))
+            line['UniProt_id'] = uniprot_ids
+
+            yield line
+
+    def add_refseq(self, data):
+        genenames = Genenames()
+        for line in data:
+            refseq = self.delimiter.join(genenames.refseq(line['Official_HGNC_symbol']))
+            if len(genenames.refseq(line['Official_HGNC_symbol'])) > 1:
+                print('REFSEQ ' + genenames.refseq(line['Official_HGNC_symbol']))
+            if line['Ensembl_transcript_to_refseq_transcript']:
+                self.p('Replaced RefSef %s with %s' % (line['Ensembl_transcript_to_refseq_transcript'], refseq))
+            line['Ensembl_transcript_to_refseq_transcript'] = refseq
 
             yield line
 
@@ -680,7 +705,7 @@ class Genelist(object):
             yield line
 
     def annotate(self, infile, outfile, verbose=False, errors=False, download_mim2gene=False, mim2gene=False, zero=False):
-        """ Annotate a gen list """
+        """ Annotate a gene list """
 
         # make sure we print if we are asked to
         if verbose:
@@ -738,6 +763,10 @@ class Genelist(object):
         else:
             reduced_data = fixed_data
         aliased_data = self.add_official_hgnc_symbol(reduced_data)
+
+        # add uniprot
+
+        # add refseq
 
         # fill in missing blanks
         self.conn = pymysql.connect(host='localhost', port=3306,
