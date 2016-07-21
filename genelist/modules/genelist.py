@@ -29,7 +29,8 @@ class Genelist(object):
                           'Clinical_db_gene_annotation', 'Disease_associated_transcript',
                           'Ensembl_transcript_to_refseq_transcript', 'Gene_description',
                           'Genetic_disease_model', 'HGNC_RefSeq_NM', 'Uniprot_protein_name',
-                          'Database_entry_version', 'Curator', 'Alias', 'Group_or_Pathway']
+                          'Database_entry_version', 'Curator', 'Alias', 'Group_or_Pathway',
+                          'Mosaicism', 'Comments']
 
         # columns that need a HGNC prefix
         self.prefix_header = ['Protein_name',
@@ -321,7 +322,7 @@ class Genelist(object):
 
         with Ensembl() as ensembldb:
             for line in data:
-                if 'Ensembl_gene_id' in line.keys():
+                if 'Ensembl_gene_id' in line and line['Ensembl_gene_id']:
                     transcripts = ensembldb.query_transcripts(line['Ensembl_gene_id'])
                     if transcripts is not None:
                         line.update(transcripts)
@@ -659,8 +660,6 @@ class Genelist(object):
         for line in data:
             refseq = genenames.refseq(line['Official_HGNC_symbol'])
             refseq = self.delimiter.join(refseq) if refseq != None else ''
-            if len(refseq) > 1:
-                self.p('Multiple RefSeq IDs: ' + refseq)
             if 'HGNC_RefSeq_NM' in line and line['HGNC_RefSeq_NM']:
                 self.p('Replaced HGNC_RefSeq_NM %s with %s' % (line['HGNC_RefSeq_NM'], refseq))
             line['HGNC_RefSeq_NM'] = refseq
