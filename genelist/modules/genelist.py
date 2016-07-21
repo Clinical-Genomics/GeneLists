@@ -37,7 +37,7 @@ class Genelist(object):
                           'Trivial_name_short',
                           'Phenotypic_disease_model', 'OMIM_morbid', 'UniProt_id',
                           'Ensemble_transcript_ID', 'Reduced_penetrance',
-                          #'Disease_associated_transcript',
+                          'Disease_associated_transcript',
                           'Ensembl_transcript_to_refseq_transcript', 'Gene_description',
                           'HGNC_RefSeq_NM', 'Uniprot_protein_name']
 
