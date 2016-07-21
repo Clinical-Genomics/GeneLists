@@ -637,8 +637,9 @@ class Genelist(object):
         uniprot   = Uniprot()
         for line in data:
             uniprot_ids = genenames.uniprot(line['Official_HGNC_symbol'])
+            uniprot_ids = uniprot_ids if uniprot_ids != None else ''
             uniprot_ids_joined = self.delimiter.join(uniprot_ids)
-            if len(genenames.uniprot(line['Official_HGNC_symbol'])) > 1:
+            if len(uniprot_ids) > 1:
                 self.p('Multiple UniProt IDs: ' + uniprot_ids_joined)
             if 'UniProt_id' in line and line['UniProt_id']:
                 self.p('Replaced Uniprot ID %s with %s' % (line['UniProt_id'], uniprot_ids_joined))
@@ -656,9 +657,10 @@ class Genelist(object):
     def add_refseq(self, data):
         genenames = Genenames()
         for line in data:
-            refseq = self.delimiter.join(genenames.refseq(line['Official_HGNC_symbol']))
-            if len(genenames.refseq(line['Official_HGNC_symbol'])) > 1:
-                print('REFSEQ ' + genenames.refseq(line['Official_HGNC_symbol']))
+            refseq = genenames.refseq(line['Official_HGNC_symbol'])
+            refseq = self.delimiter.join(refseq) if refseq != None else ''
+            if len(refseq) > 1:
+                self.p('Multiple RefSeq IDs: ' + refseq)
             if 'HGNC_RefSeq_NM' in line and line['HGNC_RefSeq_NM']:
                 self.p('Replaced HGNC_RefSeq_NM %s with %s' % (line['HGNC_RefSeq_NM'], refseq))
             line['HGNC_RefSeq_NM'] = refseq
