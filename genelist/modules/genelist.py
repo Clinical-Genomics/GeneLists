@@ -33,10 +33,10 @@ class Genelist(object):
 
         # columns that need a HGNC prefix
         self.prefix_header = ['Protein_name',
-                          'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name',
+                          'Symptoms', 'Biochemistry', 'Imaging',
                           'Trivial_name_short',
                           'Phenotypic_disease_model', 'OMIM_morbid', 'UniProt_id',
-                          'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Reduced_penetrance',
+                          'Ensemble_transcript_ID', 'Reduced_penetrance',
                           #'Disease_associated_transcript',
                           'Ensembl_transcript_to_refseq_transcript', 'Gene_description',
                           'HGNC_RefSeq_NM', 'Uniprot_protein_name']
