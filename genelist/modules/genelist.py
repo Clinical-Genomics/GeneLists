@@ -34,15 +34,15 @@ class Genelist(object):
 
         # columns that need a HGNC prefix
         self.prefix_header = ['Protein_name',
-                          'Symptoms', 'Biochemistry', 'Imaging',
-                          'Trivial_name_short',
-                          'Phenotypic_disease_model', 'OMIM_morbid', 'UniProt_id',
-                          'Ensemble_transcript_ID', 'Reduced_penetrance',
-                          'Disease_associated_transcript',
-                          'Ensembl_transcript_to_refseq_transcript', 'Gene_description',
-                          'HGNC_RefSeq_NM', 'Uniprot_protein_name']
+                              'Symptoms', 'Biochemistry', 'Imaging',
+                              'Trivial_name_short',
+                              'Phenotypic_disease_model', 'OMIM_morbid', 'UniProt_id',
+                              'Ensemble_transcript_ID', 'Reduced_penetrance',
+                              'Disease_associated_transcript',
+                              'Ensembl_transcript_to_refseq_transcript', 'Gene_description',
+                              'HGNC_RefSeq_NM', 'Uniprot_protein_name']
 
-        self.delimiter = '|' # join element of a field
+        self.delimiter = '|' # join elements of a field
 
         # EnsEMBL connection
         self.conn = None
@@ -156,63 +156,6 @@ class Genelist(object):
             return data['response']['docs'][0]['ensembl_gene_id']
         except KeyError:
             return False
-
-    # TODO: djees, put this in a separate package so we don't have to rely on a global var
-    def cache_mim2gene(self,
-                       mim2gene_file=os.path.dirname(os.path.abspath(__file__))+
-                       os.path.sep+
-                       'mim2gene.txt'):
-        """Read in the mim2gene file and store it as a dict of OMIM id: HGNC_symbol.
-        Only gene and gene/phenotype types will be saved.
-
-        Kwargs:
-                mim2gene_file (str): the aboslute path to the mim2gene.txt file
-
-        Returns: None
-        """
-
-        mim2gene_fh = open(mim2gene_file, 'r')
-        lines = (line for line in mim2gene_fh)
-        for line in lines:
-            if line.startswith('#'):
-                continue
-            (file_omim_id, omim_type, gene_id, hgnc_symbol, ensembl_gene_id) = line.split("\t")
-            if omim_type in ('gene', 'gene/phenotype') and hgnc_symbol:
-                self.symbol_of[file_omim_id] = hgnc_symbol
-                self.ensembl_gene_id_of[file_omim_id] = ensembl_gene_id
-            self.type_of[hgnc_symbol] = omim_type
-
-    def resolve_gene(self, omim_id):
-        """Looks up the omim_id in the mim2gene.txt file.
-        If found and the omim type is 'gene', return the official HGNC symbol
-
-        Args:
-            omim_id (int): the omim id
-
-        Returns:
-            on omim morbid match, official HGNC symbol if type of gene or
-            gene/phenotype otherwise False
-        """
-
-        if omim_id in self.symbol_of:
-            return self.symbol_of[omim_id]
-        return False
-
-    def resolve_ensembl_gene_id(self, omim_id):
-        """Looks up the EnsEMBL gene id in the mim2gene.txt file.
-        If found and the omim type is 'gene', return it
-
-        Args:
-                omim_id (int): the omim id
-
-        Returns: on omom id match, EnsEMBL gene id if type of gene or gene/phenotype otherwise False
-        """
-
-        if omim_id in self.ensembl_gene_id_of and \
-           self.ensembl_gene_id_of[omim_id] != None and \
-           self.ensembl_gene_id_of[omim_id] != '-':
-            return self.ensembl_gene_id_of[omim_id]
-        return False
 
     def query(self, data, try_hgnc_again=False):
         """Queries EnsEMBL. Parameters are HGNC_symbol and/or Ensembl_gene_id, whatever is
@@ -665,18 +608,6 @@ class Genelist(object):
             line['HGNC_RefSeq_NM'] = refseq
 
             yield line
-
-    def download_mim2gene(self):
-        """Download the mim2gene.txt file from omim ftp server. By default the file
-        will be downloaded to the location of the script.
-
-        Returns (str): full path and filename of the mim2gene.txt
-        """
-        filename = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + 'mim2gene.txt'
-        (dl_filename, headers) = urlretrieve('http://omim.org/static/omim/data/mim2gene.txt',
-                                             filename)
-
-        return dl_filename
 
     def query_omim(self, data):
         """Queries OMIM to fill in the inheritance models
