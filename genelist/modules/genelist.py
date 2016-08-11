@@ -15,6 +15,7 @@ from ..services.omim import OMIM
 from ..services.ensembl import Ensembl
 from ..services.genenames import Genenames
 from ..services.uniprot import Uniprot
+from ..services.mim2gene import Mim2gene
 
 class Genelist(object):
 
@@ -453,9 +454,9 @@ class Genelist(object):
         for line in data:
             HGNC_symbols = line['HGNC_symbol'].split(',')
             if 'OMIM_morbid' in line:
-                OMIM_id    = line['OMIM_morbid']
-                HGNC_symbol = self.resolve_gene(OMIM_id)
-                EnsEMBL_gene_id = self.resolve_ensembl_gene_id(OMIM_id)
+                OMIM_id     = line['OMIM_morbid']
+                HGNC_symbol = self.mim2gene.resolve_gene(OMIM_id)
+                EnsEMBL_gene_id = self.mim2gene.resolve_ensembl_gene_id(OMIM_id)
                 if HGNC_symbol != False and HGNC_symbol not in HGNC_symbols:
                     self.p("Add mim2gene HGNC symbol %s" % HGNC_symbol)
                     HGNC_symbols.insert(0, HGNC_symbol)
@@ -508,10 +509,9 @@ class Genelist(object):
                 yield line
             else:
                 yielded = False
-                HGNC_symbols = line['HGNC_symbol'].split(',')
-                for HGNC_symbol in HGNC_symbols:
-                    if HGNC_symbol in self.type_of and \
-                       self.type_of[ HGNC_symbol ] in ('gene', 'gene/phenotype'):
+                hgnc_symbols = line['HGNC_symbol'].split(',')
+                for hgnc_symbol in hgnc_symbols:
+                    if self.mim2gene.is_gene(hgnc_symbol):
                         yield line
                         yielded = True
                         break
@@ -529,7 +529,7 @@ class Genelist(object):
         """
         for line in data:
             if 'OMIM_morbid' in line:
-                HGNC_symbol = self.resolve_gene(line['OMIM_morbid'])
+                HGNC_symbol = self.mim2gene.resolve_gene(line['OMIM_morbid'])
                 if HGNC_symbol != False and line['HGNC_symbol'] != HGNC_symbol:
                     self.p('Took official symbol {} over {}'.\
                            format(HGNC_symbol, line['HGNC_symbol']))
@@ -698,16 +698,18 @@ class Genelist(object):
         self.outfile = open(outfile, 'w')
         raw_data = (line.strip() for line in tsvfile) # sluuuurp
         parsable_data = (line.split("\t") for line in raw_data)
-        # download a new version of mim2gene.txt
-        if download_mim2gene:
-            self.p('Downloading mim2gene.txt ... ')
-            dl_filename = self.download_mim2gene()
-            self.p('Done: %s' % dl_filename)
 
         # check mem2gene.txt for HGNC symbol resolution
-        if mim2gene:
-            self.mim2gene = True
-            self.cache_mim2gene()
+        if mim2gene or download_mim2gene:
+            mim2gene_filename = os.path.join(os.path.dirname(__file__), 'mim2gene.txt')
+            self.mim2gene = Mim2gene()
+
+        # download a new version of mim2gene.txt
+        if download_mim2gene:
+            mim2gene_filename = os.path.join(os.path.dirname(__file__), 'mim2gene.txt')
+            self.p('Downloading {} ... '.format(mim2gene_filename))
+            self.mim2gene.download(filename=mim2gene_filename, download=True)
+            self.mim2gene.read(filename=mim2gene_filename)
 
         # skip parsing of leading comments
         comments = []

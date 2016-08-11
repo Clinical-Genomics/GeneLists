@@ -12,14 +12,12 @@ class Mim2gene(object):
                              downloaded from omim.org.
     """
 
-    def __init__(self, mim2gene_filename=None):
+    def __init__(self, filename=None, download=False):
 
-        if mim2gene_filename is None:
-            temp_file = tempfile.NamedTemporaryFile()
-            urlretrieve('http://omim.org/static/omim/data/mim2gene.txt', temp_file.name)
-            mim2gene_filename = temp_file.name
+        if download:
+            filename = self.download(filename)
 
-        self.filename = mim2gene_filename
+        self.filename = filename
 
         # init
         self.symbol_of = {} # OMIM_id: HGNC_symbol
@@ -27,7 +25,17 @@ class Mim2gene(object):
         self.type_of = {} # HGNC_symbol: OMIM_type
 
         # read in the mim2gene file
-        self.read(self.filename)
+        if filename:
+            self.read(self.filename)
+
+    def download(self, filename=None):
+
+        if filename is None:
+            filename = tempfile.NamedTemporaryFile().name
+
+        urlretrieve('http://omim.org/static/omim/data/mim2gene.txt', filename)
+
+        return filename
 
     def read(self, mim2gene_file):
         """Read in the mim2gene file and store it as a dict of OMIM id: HGNC_symbol.
@@ -80,4 +88,10 @@ class Mim2gene(object):
            self.ensembl_gene_id_of[omim_id] != None and \
            self.ensembl_gene_id_of[omim_id] != '-':
             return self.ensembl_gene_id_of[omim_id]
+        return False
+
+    def is_gene(self, hgnc_symbol):
+        if hgnc_symbol in self.type_of and \
+           self.type_of[ hgnc_symbol ] in ('gene', 'gene/phenotype'):
+               return True
         return False
