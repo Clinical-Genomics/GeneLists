@@ -72,9 +72,6 @@ class Ensembl:
             for row in data:
                 if row['Ensembl_gene_id'] != ensembl_gene_id:
 
-                    if len(transcripts) == 0:
-                        p(ensembl_gene_id + ' has no transcripts!')
-
                     line['Ensembl_transcript_to_refseq_transcript'] = \
                             '|'.join(_join_refseqs(transcripts))
                     yield line
