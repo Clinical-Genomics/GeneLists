@@ -172,45 +172,46 @@ class Genelist(object):
         # these columns will be put into the condition statement if they have a value
         keys = ['HGNC_symbol', 'Ensembl_gene_id', 'Chromosome']
         for line in data:
-            HGNC_symbols = [symbol for symbol in line['HGNC_symbol'].split(',') if len(symbol) > 0]
-            HGNC_symbol_i = 1
-            for HGNC_symbol in HGNC_symbols:
-                line['HGNC_symbol'] = HGNC_symbol # actually replace the entry
+            hgnc_symbols = [symbol for symbol in line['HGNC_symbol'].split(',') if len(symbol) > 0]
+            hgnc_symbol_i = 1
+            for hgnc_symbol in hgnc_symbols:
+                line['HGNC_symbol'] = hgnc_symbol # actually replace the entry
                 conds = ["%s = %%s" % keys_conds[key] for key in keys
                          if key in line and line[key] != None and len(line[key]) > 0]
                 cond_values = [line[key] for key in keys
                                if key in line and line[key] != None and len(line[key]) > 0]
                 # check on length of the region name to exclude scaffolds and patches
-                query = "%s where length(seq_region.name) < 3 and %s" % (base_query, " and ".join(conds))
+                query = "%s where length(seq_region.name) < 3 and %s" % \
+                        (base_query, " and ".join(conds))
                 cur.execute(query, cond_values)
                 rs = cur.fetchall() # result set
                 if len(rs) == 0:
-                    if HGNC_symbol_i == len(HGNC_symbols):
-                        not_found_id = HGNC_symbol if len(HGNC_symbols) == 1 else HGNC_symbols
+                    if hgnc_symbol_i == len(hgnc_symbols):
+                        not_found_id = hgnc_symbol if len(hgnc_symbols) == 1 else hgnc_symbols
                         self.p("Not found: %s %s" % (not_found_id, cond_values))
                         yield line # evenif we don't find an entry for it on ensEMBL
                     if not try_hgnc_again:
                         break
                 elif len(rs) > 1:
-                    if HGNC_symbol_i > 1:
-                        self.p("Took %s/%s" % (HGNC_symbol, HGNC_symbols))
+                    if hgnc_symbol_i > 1:
+                        self.p("Took %s/%s" % (hgnc_symbol, hgnc_symbols))
                     # we couldn't resolve this with genenames.org
                     if 'Chromosome' in line:
                         self.p("Multiple entries: %s, chromosome: %s => " %
-                               (HGNC_symbol, line['Chromosome']))
+                               (hgnc_symbol, line['Chromosome']))
                     else:
-                        self.p("Multiple entries: %s => " % (HGNC_symbol))
-                    self.p("Adding: %s" % ', '.join((entry['Ensembl_gene_id'] for entry in rs )))
+                        self.p("Multiple entries: %s => " % (hgnc_symbol))
+                    self.p("Adding: %s" % ', '.join((entry['Ensembl_gene_id'] for entry in rs)))
                     for entry in rs:
                         yield self.merge_line(entry, line)
                     break
                 else:
-                    if len(HGNC_symbols) > 1:
-                        self.p("Took %s/%s" % (HGNC_symbol, HGNC_symbols))
+                    if len(hgnc_symbols) > 1:
+                        self.p("Took %s/%s" % (hgnc_symbol, hgnc_symbols))
                     for entry in rs:
                         yield self.merge_line(entry, line)
                     break
-                HGNC_symbol_i += 1
+                hgnc_symbol_i += 1
 
     def remove_hgnc_prefix(self, line):
         """ Removes the prefixed HGNC symbol from all fields
@@ -256,41 +257,41 @@ class Genelist(object):
                             line['Gene_description'] = line['Gene_description']
                 yield line
 
-    def get_transcript(self, start, end, ensembl_gene_id=None, hgnc_id=None):
-        """Queries EnsEMBL. Parameters are HGNC_symbol and/or Ensembl_gene_id, whatever is
-           available. It will return one hit with the ensembl trasncript id.
-
-        Args:
-                ensembl_gene_id (str, optional): ensembl_gene_id and/or hgnc_id should be provided.
-                hgnc_id (str, optional): ensembl_gene_id and/or hgnc_id should be provided.
-                start (int): start coordinate of the possible transcript of this gene.
-                end (int): stop coordinate of the possible transcript of this gene.
-
-        Yields:
-                dict: with following keys: ensembl_gene_id, hgnc_id, start, end, transcript_id
-        """
-
-        cur = self.conn.cursor(pymysql.cursors.DictCursor)
-        base_query = "select g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop, x.display_label AS HGNC_symbol, g.stable_id AS Ensembl_gene_id, seq_region.name AS Chromosome, t.seq_region_start AS Transcript_start, t.seq_region_end AS Transcript_stop, t.stable_id AS Transcript_id from gene g join xref x on x.xref_id = g.display_xref_id join seq_region using (seq_region_id) join transcript t using (gene_id)"
-        conds = {'t.seq_region_start': start, 't.seq_region_end': end}
-        if ensembl_gene_id != None:
-            conds.update({'g.stable_id': ensembl_gene_id})
-        if hgnc_id != None:
-            conds.update({'x.display_label': hgnc_id})
-        query = "%s where %s" % (base_query, " and ".\
-                join(['%s = %%s' % column for column in conds.keys()]))
-        cur.execute(query, [str(value) for value in conds.values()])
-        rs = cur.fetchall() # result set
-        # O-oh .. for now this still means manual intervention!
-        if len(rs) > 1:
-            self.p("Getting '%s' ... " % conds.values())
-            self.p('Multiple entries found!')
-        elif len(rs) == 0:
-            return None
-        return rs[0]
+#    def get_transcript(self, start, end, ensembl_gene_id=None, hgnc_id=None):
+#        """Queries EnsEMBL. Parameters are HGNC_symbol and/or Ensembl_gene_id, whatever is
+#           available. It will return one hit with the ensembl trasncript id.
+#
+#        Args:
+#                ensembl_gene_id (str, optional): ensembl_gene_id and/or hgnc_id should be provided.
+#                hgnc_id (str, optional): ensembl_gene_id and/or hgnc_id should be provided.
+#                start (int): start coordinate of the possible transcript of this gene.
+#                end (int): stop coordinate of the possible transcript of this gene.
+#
+#        Yields:
+#                dict: with following keys: ensembl_gene_id, hgnc_id, start, end, transcript_id
+#        """
+#
+#        cur = self.conn.cursor(pymysql.cursors.DictCursor)
+#        base_query = "select g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop, x.display_label AS HGNC_symbol, g.stable_id AS Ensembl_gene_id, seq_region.name AS Chromosome, t.seq_region_start AS Transcript_start, t.seq_region_end AS Transcript_stop, t.stable_id AS Transcript_id from gene g join xref x on x.xref_id = g.display_xref_id join seq_region using (seq_region_id) join transcript t using (gene_id)"
+#        conds = {'t.seq_region_start': start, 't.seq_region_end': end}
+#        if ensembl_gene_id != None:
+#            conds.update({'g.stable_id': ensembl_gene_id})
+#        if hgnc_id != None:
+#            conds.update({'x.display_label': hgnc_id})
+#        query = "%s where %s" % (base_query, " and ".\
+#                join(['%s = %%s' % column for column in conds.keys()]))
+#        cur.execute(query, [str(value) for value in conds.values()])
+#        rs = cur.fetchall() # result set
+#        # O-oh .. for now this still means manual intervention!
+#        if len(rs) > 1:
+#            self.p("Getting '%s' ... " % conds.values())
+#            self.p('Multiple entries found!')
+#        elif len(rs) == 0:
+#            return None
+#        return rs[0]
 
     def merge_line(self, ens, client):
-        """Will merge dict ens (EnsEMBL data) with client (data).
+        """Will merge ens with client.
            ens will take precedence over client. Changes will be reported.
 
         Args:
@@ -307,29 +308,25 @@ class Genelist(object):
                 if str(ens[key]) != str(value):
                     self.p("%s > %s: ens '%s' diff from client '%s'" %
                            (ens['Ensembl_gene_id'], key, ens[key], value))
-            #        else:
-            #                p("%s: ens '%s' eq to client '%s'" % (key, ens[key], value))
-            #else:
-            #        p("%s not in ens!" % key)
 
         # Check the Gene_start and Gene_stop for being Transcript coordinates
-        if 'Gene_start' in client and 'Gene_stop' in client:
-            if str(ens['Gene_start']) != str(client['Gene_start']) \
-               or str(ens['Gene_stop']) != str(client['Gene_stop']):
-                # get the transcript, compare those coordinates and report
-                transcript = self.get_transcript(client['Gene_start'], client['Gene_stop'],
-                                                 ens['Ensembl_gene_id'], ens['HGNC_symbol'])
-                for key in ('Gene_start', 'Gene_stop'):
-                    if str(ens[key]) != str(client[key]):
-                        if transcript and len(transcript) > 1:
-                            self.p("%s > %s: ens '%s' diff from client '%s',"
-                                   "but matches Transcript %s: %s" %
-                                   (ens['Ensembl_gene_id'], key, ens[key], client[key],
-                                    transcript['Transcript_id'],
-                                    transcript[key.replace('Gene', 'Transcript')]))
-                        else:
-                            self.p("%s > %s: ens '%s' diff from client '%s'" %
-                                   (ens['Ensembl_gene_id'], key, ens[key], client[key]))
+        #if 'Gene_start' in client and 'Gene_stop' in client:
+        #    if str(ens['Gene_start']) != str(client['Gene_start']) \
+        #       or str(ens['Gene_stop']) != str(client['Gene_stop']):
+        #        # get the transcript, compare those coordinates and report
+        #        transcript = self.get_transcript(client['Gene_start'], client['Gene_stop'],
+        #                                         ens['Ensembl_gene_id'], ens['HGNC_symbol'])
+        #        for key in ('Gene_start', 'Gene_stop'):
+        #            if str(ens[key]) != str(client[key]):
+        #                if transcript and len(transcript) > 1:
+        #                    self.p("%s > %s: ens '%s' diff from client '%s',"
+        #                           "but matches Transcript %s: %s" %
+        #                           (ens['Ensembl_gene_id'], key, ens[key], client[key],
+        #                            transcript['Transcript_id'],
+        #                            transcript[key.replace('Gene', 'Transcript')]))
+        #                else:
+        #                    self.p("%s > %s: ens '%s' diff from client '%s'" %
+        #                           (ens['Ensembl_gene_id'], key, ens[key], client[key]))
 
         merged = client.copy()
         merged.update(ens)
@@ -434,19 +431,19 @@ class Genelist(object):
                 dict: with the added HGNC symbol prepended to the HGNC_symbol column.
         """
         for line in data:
-            HGNC_symbols = line['HGNC_symbol'].split(',')
+            hgnc_symbols = line['HGNC_symbol'].split(',')
             if 'OMIM_morbid' in line:
-                OMIM_id     = line['OMIM_morbid']
-                HGNC_symbol = self.mim2gene.resolve_gene(OMIM_id)
-                EnsEMBL_gene_id = self.mim2gene.resolve_ensembl_gene_id(OMIM_id)
-                if HGNC_symbol != False and HGNC_symbol not in HGNC_symbols:
-                    self.p("Add mim2gene HGNC symbol %s" % HGNC_symbol)
-                    HGNC_symbols.insert(0, HGNC_symbol)
-                if EnsEMBL_gene_id != False and 'Ensembl_gene_id' in line.keys() \
-                   and line['Ensembl_gene_id'] != EnsEMBL_gene_id:
+                omim_id = line['OMIM_morbid']
+                hgnc_symbol = self.mim2gene.resolve_gene(omim_id)
+                ensembl_gene_id = self.mim2gene.resolve_ensembl_gene_id(omim_id)
+                if hgnc_symbol != False and hgnc_symbol not in hgnc_symbols:
+                    self.p("Add mim2gene HGNC symbol %s" % hgnc_symbol)
+                    hgnc_symbols.insert(0, hgnc_symbol)
+                if ensembl_gene_id != False and 'Ensembl_gene_id' in line.keys() \
+                   and line['Ensembl_gene_id'] != ensembl_gene_id:
                     self.p("morbidmap '{}' differs from local '{}'".\
-                           format(line['Ensembl_gene_id'], EnsEMBL_gene_id))
-            line['HGNC_symbol'] = ','.join(HGNC_symbols)
+                           format(line['Ensembl_gene_id'], ensembl_gene_id))
+            line['HGNC_symbol'] = ','.join(hgnc_symbols)
             yield line
 
     def add_genome_build(self, data, genome_build):
@@ -511,16 +508,16 @@ class Genelist(object):
         """
         for line in data:
             if 'OMIM_morbid' in line:
-                HGNC_symbol = self.mim2gene.resolve_gene(line['OMIM_morbid'])
-                if HGNC_symbol != False and line['HGNC_symbol'] != HGNC_symbol:
+                hgnc_symbol = self.mim2gene.resolve_gene(line['OMIM_morbid'])
+                if hgnc_symbol != False and line['HGNC_symbol'] != hgnc_symbol:
                     self.p('Took official symbol {} over {}'.\
-                           format(HGNC_symbol, line['HGNC_symbol']))
-                    line['HGNC_symbol'] = HGNC_symbol
+                           format(hgnc_symbol, line['HGNC_symbol']))
+                    line['HGNC_symbol'] = hgnc_symbol
             yield line
 
     def add_official_hgnc_symbol(self, data):
-        """Add the official HGNC symbol fetched from genenames.org to the field Official_HGNC_symbol.
-        Also prepend the official HGNC symbol to the HGNC_symbol field.
+        """Add the official HGNC symbol fetched from genenames.org to the field
+        Official_HGNC_symbol. Also prepend the official HGNC symbol to the HGNC_symbol field.
 
         Args:
                 data (list of dicts): Inner dict represents a row in a gene list
