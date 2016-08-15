@@ -46,7 +46,8 @@ class Genelist(object):
         self.delimiter = '|' # join elements of a field
 
         # EnsEMBL connection
-        self.conn = None
+        self.conn = pymysql.connect(host='localhost', port=3306,
+                                    user='anonymous', db='homo_sapiens_core_75_37')
         self.verbose = False # to print or not to print
         # print only errors. Does not print the gene list. Needs verbose=True to work.
         self.errors_only = False
@@ -351,7 +352,7 @@ class Genelist(object):
 
     def munge(self, data):
         """Make sure the data we got from EnsEMBL is good enough for the gene lists
-                # swap start and stop gene coordinates if start if bigger than stop
+           swap start and stop gene coordinates if start if bigger than stop
 
         Args:
                 data (list of dicts): representing the lines and columns in a gene list
@@ -540,7 +541,7 @@ class Genelist(object):
                 if official_symbol:
                     if official_symbol not in HGNC_symbols:
                         self.p('Add official HGNC symbol %s' % official_symbol)
-                        line['HGNC_symbol'] = ','.join( (official_symbol, line['HGNC_symbol']) )
+                        line['HGNC_symbol'] = ','.join((official_symbol, line['HGNC_symbol']))
                     official_symbols.append(official_symbol)
                 else:
                     official_symbols.append(HGNC_symbol)
@@ -558,8 +559,16 @@ class Genelist(object):
             yield line
 
     def add_uniprot(self, data):
+        """ Add the UniProt ID and UniProt protein name based on the official HGNC symbol.
+
+        Args:
+                data (list of dicts): Inner dict represents a row in a gene list
+
+        Yields:
+                dict: now with the UniProt information.
+        """
         genenames = Genenames()
-        uniprot   = Uniprot()
+        uniprot = Uniprot()
         for line in data:
             uniprot_ids = genenames.uniprot(line['Official_HGNC_symbol'])
             uniprot_ids = uniprot_ids if uniprot_ids != None else ''
@@ -572,7 +581,8 @@ class Genelist(object):
             for uniprot_id in uniprot_ids:
                 uniprot_description = uniprot.fetch_description(uniprot_id)
                 if 'Uniprot_protein_name' in line and line['Uniprot_protein_name']:
-                    self.p('Replaced Uniprot ID %s with %s' % (line['Uniprot_protein_name'], uniprot_description))
+                    self.p('Replaced Uniprot ID %s with %s' %
+                           (line['Uniprot_protein_name'], uniprot_description))
 
             line['Uniprot_protein_name'] = uniprot_description
             line['UniProt_id'] = uniprot_ids_joined
@@ -580,6 +590,14 @@ class Genelist(object):
             yield line
 
     def add_refseq(self, data):
+        """ Add the RefSeq ID based on the official HGNC symbol.
+
+        Args:
+                data (list of dicts): Inner dict represents a row in a gene list
+
+        Yields:
+                dict: now with the RefSeq information.
+        """
         genenames = Genenames()
         for line in data:
             refseq = genenames.refseq(line['Official_HGNC_symbol'])
@@ -683,14 +701,12 @@ class Genelist(object):
         # check mem2gene.txt for HGNC symbol resolution
         if mim2gene or download_mim2gene:
             mim2gene_filename = os.path.join(os.path.dirname(__file__), 'mim2gene.txt')
-            self.mim2gene = Mim2gene()
-
-        # download a new version of mim2gene.txt
-        if download_mim2gene:
-            mim2gene_filename = os.path.join(os.path.dirname(__file__), 'mim2gene.txt')
-            self.p('Downloading {} ... '.format(mim2gene_filename))
-            self.mim2gene.download(filename=mim2gene_filename)
-            self.mim2gene.read(filename=mim2gene_filename)
+            if mim2gene:
+                self.mim2gene = Mim2gene()
+            else:
+                self.p('Downloading {} ... '.format(mim2gene_filename))
+                self.mim2gene.download(filename=mim2gene_filename)
+                self.mim2gene.read(filename=mim2gene_filename)
 
         # skip parsing of leading comments
         comments = []
@@ -731,8 +747,6 @@ class Genelist(object):
         refseq_data = self.add_refseq(uniprot_data)
 
         # fill in missing blanks
-        self.conn = pymysql.connect(host='localhost', port=3306,
-                                    user='anonymous', db='homo_sapiens_core_75_37')
         ensembld_data = self.query(refseq_data, try_hgnc_again=True)
 
         # put the official HGNC symbol
