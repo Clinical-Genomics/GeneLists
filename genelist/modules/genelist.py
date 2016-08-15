@@ -139,25 +139,6 @@ class Genelist(object):
             print('\033[93m', '>>> ', line, '\033[0m')
             self.outfile.write('\033[93m>>> {} \033[0m\n'.format(line))
 
-    def resolve_ensembl_id(self, hgnc_id):
-        """Query genenames.org for the EnsEMBL gene id based on the HGNC symbol.
-
-        Args:
-                hgnc_id (str): the HGNC symbol
-
-        Returns (str): The ensEMBL gene id
-
-        """
-        import json
-        response = urlopen(Request("http://rest.genenames.org/fetch/symbol/%s" % hgnc_id,
-                                   None, {'Accept':'application/json'}))
-        data = response.read().decode('UTF-8')
-        data = json.loads(data)
-        try:
-            return data['response']['docs'][0]['ensembl_gene_id']
-        except KeyError:
-            return False
-
     def query(self, data, try_hgnc_again=False):
         """Queries EnsEMBL. Parameters are HGNC_symbol and/or Ensembl_gene_id, whatever is
         available. Data from EnsEMBLdb will overwrite the client data.
@@ -708,7 +689,7 @@ class Genelist(object):
         if download_mim2gene:
             mim2gene_filename = os.path.join(os.path.dirname(__file__), 'mim2gene.txt')
             self.p('Downloading {} ... '.format(mim2gene_filename))
-            self.mim2gene.download(filename=mim2gene_filename, download=True)
+            self.mim2gene.download(filename=mim2gene_filename)
             self.mim2gene.read(filename=mim2gene_filename)
 
         # skip parsing of leading comments

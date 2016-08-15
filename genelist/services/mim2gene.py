@@ -37,17 +37,17 @@ class Mim2gene(object):
 
         return filename
 
-    def read(self, mim2gene_file):
+    def read(self, filename):
         """Read in the mim2gene file and store it as a dict of OMIM id: HGNC_symbol.
         Only gene and gene/phenotype types will be saved.
 
         Kwargs:
-                mim2gene_file (str): the aboslute path to the mim2gene.txt file
+                filename (str): the aboslute path to the mim2gene.txt file
 
         Returns: None
         """
 
-        mim2gene_fh = open(mim2gene_file, 'r')
+        mim2gene_fh = open(filename, 'r')
         lines = (line for line in mim2gene_fh)
         for line in lines:
             if line.startswith('#'):
