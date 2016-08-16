@@ -257,39 +257,6 @@ class Genelist(object):
                             line['Gene_description'] = line['Gene_description']
                 yield line
 
-#    def get_transcript(self, start, end, ensembl_gene_id=None, hgnc_id=None):
-#        """Queries EnsEMBL. Parameters are HGNC_symbol and/or Ensembl_gene_id, whatever is
-#           available. It will return one hit with the ensembl trasncript id.
-#
-#        Args:
-#                ensembl_gene_id (str, optional): ensembl_gene_id and/or hgnc_id should be provided.
-#                hgnc_id (str, optional): ensembl_gene_id and/or hgnc_id should be provided.
-#                start (int): start coordinate of the possible transcript of this gene.
-#                end (int): stop coordinate of the possible transcript of this gene.
-#
-#        Yields:
-#                dict: with following keys: ensembl_gene_id, hgnc_id, start, end, transcript_id
-#        """
-#
-#        cur = self.conn.cursor(pymysql.cursors.DictCursor)
-#        base_query = "select g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop, x.display_label AS HGNC_symbol, g.stable_id AS Ensembl_gene_id, seq_region.name AS Chromosome, t.seq_region_start AS Transcript_start, t.seq_region_end AS Transcript_stop, t.stable_id AS Transcript_id from gene g join xref x on x.xref_id = g.display_xref_id join seq_region using (seq_region_id) join transcript t using (gene_id)"
-#        conds = {'t.seq_region_start': start, 't.seq_region_end': end}
-#        if ensembl_gene_id != None:
-#            conds.update({'g.stable_id': ensembl_gene_id})
-#        if hgnc_id != None:
-#            conds.update({'x.display_label': hgnc_id})
-#        query = "%s where %s" % (base_query, " and ".\
-#                join(['%s = %%s' % column for column in conds.keys()]))
-#        cur.execute(query, [str(value) for value in conds.values()])
-#        rs = cur.fetchall() # result set
-#        # O-oh .. for now this still means manual intervention!
-#        if len(rs) > 1:
-#            self.p("Getting '%s' ... " % conds.values())
-#            self.p('Multiple entries found!')
-#        elif len(rs) == 0:
-#            return None
-#        return rs[0]
-
     def merge_line(self, ens, client):
         """Will merge ens with client.
            ens will take precedence over client. Changes will be reported.
@@ -308,25 +275,6 @@ class Genelist(object):
                 if str(ens[key]) != str(value):
                     self.p("%s > %s: ens '%s' diff from client '%s'" %
                            (ens['Ensembl_gene_id'], key, ens[key], value))
-
-        # Check the Gene_start and Gene_stop for being Transcript coordinates
-        #if 'Gene_start' in client and 'Gene_stop' in client:
-        #    if str(ens['Gene_start']) != str(client['Gene_start']) \
-        #       or str(ens['Gene_stop']) != str(client['Gene_stop']):
-        #        # get the transcript, compare those coordinates and report
-        #        transcript = self.get_transcript(client['Gene_start'], client['Gene_stop'],
-        #                                         ens['Ensembl_gene_id'], ens['HGNC_symbol'])
-        #        for key in ('Gene_start', 'Gene_stop'):
-        #            if str(ens[key]) != str(client[key]):
-        #                if transcript and len(transcript) > 1:
-        #                    self.p("%s > %s: ens '%s' diff from client '%s',"
-        #                           "but matches Transcript %s: %s" %
-        #                           (ens['Ensembl_gene_id'], key, ens[key], client[key],
-        #                            transcript['Transcript_id'],
-        #                            transcript[key.replace('Gene', 'Transcript')]))
-        #                else:
-        #                    self.p("%s > %s: ens '%s' diff from client '%s'" %
-        #                           (ens['Ensembl_gene_id'], key, ens[key], client[key]))
 
         merged = client.copy()
         merged.update(ens)
