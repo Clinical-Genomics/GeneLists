@@ -4,6 +4,7 @@
 from __future__ import print_function
 import os
 import datetime
+from collections import OrderedDict
 
 from ..utils.git import getgitlastmoddate, getgittag
 from ..utils.acronyms import Acronyms
@@ -14,7 +15,7 @@ def merge_panels(infiles, databases):
     acronyms = Acronyms(os.path.dirname(os.path.dirname(os.path.realpath(infiles[0].name))))
 
     versions = {} # Filename => { Database => { 'Version': Version, 'Date': Date } }
-    data = {} # HGNC_symbol => {'HGNC_symbol' => '', 'EnsEMBLid' => [], 'Databases' => () }
+    data = OrderedDict() # HGNC_symbol => {'HGNC_symbol' => '', 'EnsEMBLid' => [], 'Databases' => () }
 
     columns = ['Chromosome', 'HGNC_symbol', 'Ensembl_gene_id', 'Clinical_db_gene_annotation',
                'Reduced_penetrance', 'Disease_associated_transcript', 'Phenotypic_disease_model',
@@ -103,5 +104,5 @@ def merge_panels(infiles, databases):
 
         if line['Disease_associated_transcript'] == 'unknown':
             line['Disease_associated_transcript'] = ''
-        for ensEMBLid in line['Ensembl_gene_id'].split(','):
-            print('\t'.join([ line[column] for column in columns ]))
+        for ensemblid in line['Ensembl_gene_id'].split(','):
+            print('\t'.join([line[column] for column in columns]))
