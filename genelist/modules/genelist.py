@@ -253,8 +253,6 @@ class Genelist(object):
                     transcripts = ensembldb.query_transcripts(line['Ensembl_gene_id'])
                     if transcripts is not None:
                         line.update(transcripts)
-                        if len(line['Gene_description']) > 0:
-                            line['Gene_description'] = line['Gene_description']
                 yield line
 
     def merge_line(self, ens, client):
