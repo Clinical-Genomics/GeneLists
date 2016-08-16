@@ -2,19 +2,23 @@
 """
 
 import tempfile
+from os.path import exists
 from urllib.request import urlretrieve
 
 class Mim2gene(object):
     """Basic interface to mim2gene. Requires a mim2gene file which can be optionally downloaded.
 
     Args:
-        mim2gene_file (str, None): Location of the mim2gene.txt file. If none given, it will be
-                             downloaded from omim.org.
+        filename (str, None): Location of the mim2gene.txt file. If none given, it will be
+                             downloaded from omim.org to a temporary file.
+        download (bool, True): Force download, even if file exists.
     """
 
     def __init__(self, filename=None, download=False):
 
-        if download:
+        if download or \
+          filename is None or \
+          not exists(filename):
             filename = self.download(filename)
 
         self.filename = filename

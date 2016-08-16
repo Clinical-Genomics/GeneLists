@@ -51,7 +51,7 @@ class Genelist(object):
         self.verbose = False # to print or not to print
         # print only errors. Does not print the gene list. Needs verbose=True to work.
         self.errors_only = False
-        self.mim2gene = False # resolve HGNC symbol with mim2gene.txt
+        self.mim2gene = False
         self.contigs = set() # a list of al contigs in the list
         self.outfile = None # where to write to
 
@@ -498,7 +498,7 @@ class Genelist(object):
                     self.p('Removed: %s' % line)
 
     def put_official_hgnc_symbol(self, data):
-        """Resolve the official HGNC symbol from OMIM and replace line['HGNC_symbol']
+        """Resolve the official HGNC symbol from OMIM (mim2gene) and replace line['HGNC_symbol']
 
         Args:
                 data (list of dicts): Inner dict represents a row in a gene list
@@ -698,12 +698,11 @@ class Genelist(object):
         # check mem2gene.txt for HGNC symbol resolution
         if mim2gene or download_mim2gene:
             mim2gene_filename = os.path.join(os.path.dirname(__file__), 'mim2gene.txt')
-            if mim2gene:
-                self.mim2gene = Mim2gene()
-            else:
+            if download_mim2gene:
                 self.p('Downloading {} ... '.format(mim2gene_filename))
-                self.mim2gene.download(filename=mim2gene_filename)
-                self.mim2gene.read(filename=mim2gene_filename)
+                self.mim2gene = Mim2gene(filename=mim2gene_filename, download=True)
+            else:
+                self.mim2gene = Mim2gene()
 
         # skip parsing of leading comments
         comments = []
@@ -747,7 +746,10 @@ class Genelist(object):
         ensembld_data = self.query(refseq_data, try_hgnc_again=True)
 
         # put the official HGNC symbol
-        hgnc_official_data = self.put_official_hgnc_symbol(ensembld_data)
+        if mim2gene:
+            hgnc_official_data = self.put_official_hgnc_symbol(ensembld_data)
+        else:
+            hgnc_official_data = ensembld_data
 
         # aggregate transcripts
         transcript_data = self.query_transcripts(hgnc_official_data)
