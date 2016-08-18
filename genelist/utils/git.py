@@ -19,7 +19,7 @@ def getgittag(filename, date=None, full_tag=False):
 
     """
     cwd = os.getcwd()
-    os.chdir(os.path.dirname(filename))
+    os.chdir(os.path.dirname(os.path.abspath(filename)))
 
     try:
         command = ['git', 'describe']
@@ -46,7 +46,7 @@ def getgitlastmoddate(filename, date_format='%Y%m%d'):
 
     """
     cwd = os.getcwd()
-    os.chdir(os.path.dirname(filename))
+    os.chdir(os.path.dirname(os.path.abspath(filename)))
     full_str_date = subprocess.check_output(['git', 'log', '-1', '--format=%ad', '--', filename]).decode('utf-8').strip()
     os.chdir(cwd)
 
