@@ -87,14 +87,13 @@ class OMIM(object):
     return url, params
 
   def parse_phenotypic_disease_models(self, phenotypes, chromosome=''):
-    """Compose Phenotypic_disease_model entry based on the inheritance models of a gene.
-    Such entry might look like: 614096>AR|615889>AR
+    """Extract and clean up the inheritance models returned from an OMIM query.
 
     Args:
         phenotypes (list of dicts): each dict represents a phenotype. This is the 'phenotypes' key in the data returned from OMIM
 
     Returns
-        dict of lists: [ phenotype_mim_number: [ inheritance_model, inheritance_model, ...] ]
+        dict of sorted list: { phenotype_mim_number: [ inheritance_model, inheritance_model, ...] }
 
     """
     TERMS_MAPPER = {
@@ -139,11 +138,11 @@ class OMIM(object):
           models.update([ model ])
 
         models = models.difference(TERMS_BLACKLIST) # remove blacklisted terms
-        # remove models thta don't belong on this chromosome
+        # remove models that don't belong on this chromosome
         models = models.difference(TERMS_AUTOSOMAL) if chromosome.upper() == 'X' else models.difference(TERMS_X)
         models = set([TERMS_MAPPER.get(model_human, model_human) for model_human in models]) # rename them if possible
 
-      phenotypic_disease_model[ phenotype['phenotype_mim_number'] ] = list(models) if len(models) else None
+      phenotypic_disease_model[ phenotype['phenotype_mim_number'] ] = sorted(list(models)) if len(models) else None
 
     return phenotypic_disease_model
 

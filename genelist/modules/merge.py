@@ -54,7 +54,7 @@ def merge_panels(infiles, databases):
             if len(databases):
                 set_databases = set(line['Clinical_db_gene_annotation']).intersection(databases)
                 if len(set_databases):
-                    line['Clinical_db_gene_annotation'] = list(set_databases)
+                    line['Clinical_db_gene_annotation'] = sorted(list(set_databases))
                 else:
                     continue
 

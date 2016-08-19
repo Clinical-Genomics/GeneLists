@@ -5,7 +5,7 @@ import logging
 import click
 
 from .modules.genelist import Genelist
-from .modules.sanity import Sanity 
+from .modules.sanity import Sanity
 from .modules.panels import get_panels
 from .modules.merge import merge_panels
 
@@ -35,8 +35,12 @@ def fetch(infile, outfile, zero, verbose, errors, download_mim2gene, mim2gene):
     """Fetch all annotations."""
 
     genelist = Genelist()
-    genelist.annotate(infile, outfile, zero=zero, verbose=verbose, errors=
-                      errors,download_mim2gene=download_mim2gene, mim2gene=mim2gene)
+
+    tsvfile = open(infile, 'r')
+    tsvoutfile = open(outfile, 'w')
+    for line in genelist.annotate(lines=tsvfile, zero=zero, verbose=verbose, errors=errors,
+            download_mim2gene=download_mim2gene, mim2gene=mim2gene):
+        tsvoutfile.write(line + '\n')
 
 @run.command()
 @click.argument('genelist', nargs=1, type=click.Path(exists=True))

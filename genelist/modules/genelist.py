@@ -8,6 +8,7 @@ import pymysql
 import argparse
 import re
 import os
+from io import StringIO
 from urllib.request import urlretrieve, Request, urlopen
 from collections import Counter
 
@@ -43,23 +44,23 @@ class Genelist(object):
                               'Ensembl_transcript_to_refseq_transcript', 'Gene_description',
                               'HGNC_RefSeq_NM', 'Uniprot_protein_name']
 
-        self.delimiter = '|' # join elements of a field
-        self.line_nr = 0 # current line number
-        self.current_hgnc_id = ''
-
         # EnsEMBL connection
         self.conn = pymysql.connect(host='localhost', port=3306,
                                     user='anonymous', db='homo_sapiens_core_75_37')
-        self.verbose = False # to print or not to print
-        # print only errors. Does not print the gene list. Needs verbose=True to work.
+
+        self.reset()
+
+    def reset(self):
+        """ Reset state for a next genelist to annotate """
+
+        self.delimiter = '|' # join elements of a field
+        self.current_hgnc_id = ''
+        self.line_nr = 0
+        self.verbose = False
         self.errors_only = False
         self.mim2gene = False
-        self.contigs = set() # a list of al contigs in the list
-        self.outfile = None # where to write to
-
-        self.symbol_of = {} # omim_id: official hgnc_symbol
-        self.type_of = {} # hgnc_symbol: type
-        self.ensembl_gene_id_of = {} # hgnc_symbol: EnsEMBL_gene_id
+        self.contigs = set()
+        self.error_buffer = StringIO()
 
     def print_header(self, header=None):
         """
@@ -139,10 +140,10 @@ class Genelist(object):
                 pass
         """
         if self.verbose:
-            warning = '\033[93m>>> #{} [{}] {}\033[0m'.format(self.line_nr, self.current_hgnc_id, line)
+            warning = '>>> #{} [{}] {}'.format(self.line_nr, self.current_hgnc_id, line)
 
-            print(warning)
-            self.outfile.write(warning)
+            print('\033[93m' + warning + '\033[0m')
+            self.error_buffer.write(warning + '\n')
 
     def get_context(self, data):
         """Increments the global line_nr for each passing line.
@@ -461,7 +462,7 @@ class Genelist(object):
                         yielded = True
                         break
                 if not yielded:
-                    self.warn('Removed: %s' % line)
+                    self.warn('Removed: {%s}' % ', '.join(["'%s':'%s'" % (k, line[k]) for k in sorted(line)]))
 
     def put_official_hgnc_symbol(self, data):
         """Resolve the official HGNC symbol from OMIM (mim2gene) and replace line['HGNC_symbol']
@@ -643,8 +644,10 @@ class Genelist(object):
 
             yield line
 
-    def annotate(self, infile, outfile, verbose=False, errors=False, download_mim2gene=False, mim2gene=False, zero=False):
+    def annotate(self, lines, verbose=False, errors=False, download_mim2gene=False, mim2gene=False, zero=False):
         """ Annotate a gene list """
+
+        self.reset()
 
         # make sure we print if we are asked to
         if verbose:
@@ -655,10 +658,7 @@ class Genelist(object):
             self.verbose = True
             self.errors_only = True
 
-        # read in the TSV file
-        tsvfile = open(infile, 'r')
-        self.outfile = open(outfile, 'w')
-        raw_data = (line.strip() for line in tsvfile) # sluuuurp
+        raw_data = (line.strip() for line in lines) # sluuuurp
         parsable_data = (line.split("\t") for line in raw_data)
 
         # check mem2gene.txt for HGNC symbol resolution
@@ -750,11 +750,17 @@ class Genelist(object):
                 print(self.format_line(line))
             print_data.append(line)
 
+        # print the errors and warnings
+        if verbose:
+            # split the lines for easier unit testing
+            for line in self.error_buffer.getvalue().split('\n'):
+                yield line
+
         # print the gene list
         for comment in comments:
-            self.outfile.write('\t'.join(comment) + '\n')
+            yield '\t'.join(comment)
         for line in self.get_contigs():
-            self.outfile.write(line + '\n')
-        self.outfile.write(self.get_header() + '\n')
+            yield line
+        yield self.get_header()
         for line in print_data:
-            self.outfile.write(self.format_line(line) + '\n')
+            yield self.format_line(line)
