@@ -583,7 +583,7 @@ class Genelist(object):
         """
         omim = OMIM(api_key='<fill in key>')
         for line in data:
-            if 'OMIM_morbid' in line and 'Chromosome' in line:
+            if 'OMIM_morbid' in line and line['OMIM_morbid'] and 'Chromosome' in line:
                 entry = omim.gene(mim_number=line['OMIM_morbid'])
             elif 'HGNC_symbol' in line and 'Chromosome' in line:
                 entry = omim.gene(hgnc_symbol=line['Official_HGNC_symbol'])
