@@ -17,3 +17,6 @@ share
 
 # ignore some bash includes
 log.bash
+
+# ignore config file changes
+config.yaml

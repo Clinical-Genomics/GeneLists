@@ -5,11 +5,10 @@
 
 from __future__ import print_function
 import pymysql
-import argparse
 import re
 import os
+import yaml
 from io import StringIO
-from urllib.request import urlretrieve, Request, urlopen
 from collections import Counter
 
 from ..services.omim import OMIM
@@ -22,7 +21,7 @@ class Genelist(object):
 
     """Provide all annotation functionality in one class. """
 
-    def __init__(self):
+    def __init__(self, config):
         self.gl_header = ['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_symbol', 'Protein_name',
                           'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name',
                           'Trivial_name_short',
@@ -44,9 +43,14 @@ class Genelist(object):
                               'Ensembl_transcript_to_refseq_transcript', 'Gene_description',
                               'HGNC_RefSeq_NM', 'Uniprot_protein_name']
 
+        self.config = yaml.load(config)
+
         # EnsEMBL connection
-        self.conn = pymysql.connect(host='localhost', port=3306,
-                                    user='anonymous', db='homo_sapiens_core_75_37')
+        self.conn = pymysql.connect(
+            host=self.config['ensembl']['host'],
+            port=self.config['ensembl']['port'],
+            user=self.config['ensembl']['user'],
+            db=self.config['ensembl']['db'])
 
         self.reset()
 
@@ -581,7 +585,7 @@ class Genelist(object):
         Yields:
                 dict: with the added HGNC symbol prepended to the HGNC_symbol column.
         """
-        omim = OMIM(api_key='<fill in key>')
+        omim = OMIM(api_key=self.config['OMIM']['api_key'])
         for line in data:
             if 'OMIM_morbid' in line and line['OMIM_morbid'] and 'Chromosome' in line:
                 entry = omim.gene(mim_number=line['OMIM_morbid'])
@@ -614,7 +618,6 @@ class Genelist(object):
             if entry['mim_number'] is not None:
                 if 'OMIM_morbid' in line \
                 and len(line['OMIM_morbid']) > 0 \
-                and str(line['OMIM_morbid']) != line['HGNC_symbol']+':'+str(entry['mim_number']) \
                 and str(line['OMIM_morbid']) != str(entry['mim_number']):
                     self.warn('%s %s > %s client OMIM number differs from OMIM query' % \
                            (line['HGNC_symbol'], line['OMIM_morbid'], entry['mim_number']))

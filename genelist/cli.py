@@ -19,8 +19,8 @@ def run():
     pass
 
 @run.command()
-@click.argument('infile', nargs=1, type=click.Path(exists=True))
-@click.argument('outfile', nargs=1, type=click.Path())
+@click.argument('infile', nargs=1, type=click.File('r'))
+@click.argument('outfile', nargs=1, type=click.File('w'))
 @click.option('--zero', is_flag=True, default=False, show_default=True,
               help='Will convert 0-based coordinates to 1-based.')
 @click.option('--verbose', is_flag=True, default=False, show_default=True,
@@ -31,16 +31,16 @@ def run():
               help='Will download a new version of mim2gene.txt, used to check the OMIM type.')
 @click.option('--mim2gene', is_flag=True, default=False, show_default=True,
               help='Will try to resolve an HGNC symbol with the help of mim2gene.txt.')
-def fetch(infile, outfile, zero, verbose, errors, download_mim2gene, mim2gene):
+@click.option('--config', '-c', required=True, type=click.File('r'),
+              help='YAML config file.')
+def fetch(infile, outfile, zero, verbose, errors, download_mim2gene, mim2gene, config):
     """Fetch all annotations."""
 
-    genelist = Genelist()
+    genelist = Genelist(config)
 
-    tsvfile = open(infile, 'r')
-    tsvoutfile = open(outfile, 'w')
-    for line in genelist.annotate(lines=tsvfile, zero=zero, verbose=verbose, errors=errors,
+    for line in genelist.annotate(lines=infile, zero=zero, verbose=verbose, errors=errors,
             download_mim2gene=download_mim2gene, mim2gene=mim2gene):
-        tsvoutfile.write(line + '\n')
+        outfile.write(line + '\n')
 
 @run.command()
 @click.argument('genelist', nargs=1, type=click.Path(exists=True))

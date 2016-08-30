@@ -1,0 +1,8 @@
+ensembl:
+    host: localhost
+    port: 3306
+    user: anonymous
+    db: homo_sapiens_core_75_37
+
+OMIM:
+    api_key: <fill in key>
