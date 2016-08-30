@@ -23,23 +23,27 @@ def run():
 @click.argument('outfile', nargs=1, type=click.File('w'))
 @click.option('--zero', is_flag=True, default=False, show_default=True,
               help='Will convert 0-based coordinates to 1-based.')
-@click.option('--verbose', is_flag=True, default=False, show_default=True,
-              help='Will show conflict messages from EnsEMBLdb inbetween the gene list lines.')
-@click.option('--errors', is_flag=True, default=False, show_default=True,
-              help='Will not output the gene list, but only error messages.')
+@click.option('--warn', is_flag=True, default=False, show_default=True,
+              help='Print minor conflicts.')
+@click.option('--error', is_flag=True, default=False, show_default=True,
+              help='Print severe conflicts.')
+@click.option('--info', is_flag=True, default=False, show_default=True,
+              help='Be more verbose.')
+@click.option('--report-empty', is_flag=True, default=False, show_default=True,
+              help='Report warnings from empty fields.')
 @click.option('--download-mim2gene', is_flag=True, default=False, show_default=True,
               help='Will download a new version of mim2gene.txt, used to check the OMIM type.')
 @click.option('--mim2gene', is_flag=True, default=False, show_default=True,
               help='Will try to resolve an HGNC symbol with the help of mim2gene.txt.')
 @click.option('--config', '-c', required=True, type=click.File('r'),
               help='YAML config file.')
-def fetch(infile, outfile, zero, verbose, errors, download_mim2gene, mim2gene, config):
+def fetch(infile, outfile, zero, warn, error, info, download_mim2gene, mim2gene, report_empty, config):
     """Fetch all annotations."""
 
     genelist = Genelist(config)
 
-    for line in genelist.annotate(lines=infile, zero=zero, verbose=verbose, errors=errors,
-            download_mim2gene=download_mim2gene, mim2gene=mim2gene):
+    for line in genelist.annotate(lines=infile, zero=zero, info=info, error=error, warn=warn,
+            download_mim2gene=download_mim2gene, mim2gene=mim2gene, report_empty=report_empty):
         outfile.write(line + '\n')
 
 @run.command()

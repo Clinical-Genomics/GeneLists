@@ -8,6 +8,7 @@ import pymysql
 import re
 import os
 import yaml
+import logging
 from io import StringIO
 from collections import Counter
 
@@ -34,11 +35,8 @@ class Genelist(object):
                           'Mosaicism', 'Comments']
 
         # columns that need a HGNC prefix
-        self.prefix_header = ['Protein_name',
-                              'Symptoms', 'Biochemistry', 'Imaging',
-                              'Trivial_name_short',
-                              'Phenotypic_disease_model', 'OMIM_morbid', 'UniProt_id',
-                              'Ensemble_transcript_ID', 'Reduced_penetrance',
+        self.prefix_header = ['Phenotypic_disease_model', 'OMIM_morbid', 'UniProt_id',
+                              'Ensemble_transcript_ID',
                               'Disease_associated_transcript',
                               'Ensembl_transcript_to_refseq_transcript', 'Gene_description',
                               'HGNC_RefSeq_NM', 'Uniprot_protein_name']
@@ -53,18 +51,23 @@ class Genelist(object):
             db=self.config['ensembl']['db'])
 
         self.reset()
+        self.logger = logging.getLogger(__name__)
+        self.setup_logging(level='DEBUG')
 
     def reset(self):
         """ Reset state for a next genelist to annotate """
 
         self.delimiter = '|' # join elements of a field
         self.current_hgnc_id = ''
+        self.current_line = {}
         self.line_nr = 0
-        self.verbose = False
-        self.errors_only = False
         self.mim2gene = False
         self.contigs = set()
-        self.error_buffer = StringIO()
+        self.print_info = False
+        self.print_warn = False
+        self.print_error = False
+        self.report_empty = False
+        #self.log_buffer = StringIO()
 
     def print_header(self, header=None):
         """
@@ -78,8 +81,7 @@ class Genelist(object):
         """
         if not header:
             header = self.gl_header
-        if not self.errors_only:
-            print(self.get_header(header=header))
+        print(self.get_header(header=header))
 
     def get_header(self, header=None):
         """
@@ -131,10 +133,29 @@ class Genelist(object):
         Note:
                 Will print the STDOUT
         """
-        if not self.errors_only:
-            print(self.format_line(line))
+        print(self.format_line(line))
 
-    def warn(self, line):
+    def warn(self, line, key=None):
+        """print only if the verbose switch has been set
+
+        Args:
+                line (str): line to print to STDOUT
+                key (str, optional): the key in current data.
+                                     Used to check if the value behind the key is empty.
+
+        Returns:
+                pass
+        """
+        if self.print_warn:
+            if key is None: # no key is given, report all warnings
+                self.logger.warning(line, extra={'line_nr': self.line_nr,
+                                    'hgnc_id': self.current_hgnc_id})
+            elif self.report_empty or (key and
+                key in self.current_line and self.current_line[key]):
+                self.logger.warning(line, extra={'line_nr': self.line_nr,
+                                    'hgnc_id': self.current_hgnc_id})
+
+    def info(self, line):
         """print only if the verbose switch has been set
 
         Args:
@@ -143,11 +164,20 @@ class Genelist(object):
         Returns:
                 pass
         """
-        if self.verbose:
-            warning = '>>> #{} [{}] {}'.format(self.line_nr, self.current_hgnc_id, line)
+        if self.print_info:
+            self.logger.info(line, extra={'line_nr': self.line_nr, 'hgnc_id': self.current_hgnc_id})
 
-            print('\033[93m' + warning + '\033[0m')
-            self.error_buffer.write(warning + '\n')
+    def error(self, line):
+        """print only if the verbose switch has been set
+
+        Args:
+                line (str): line to print to STDOUT
+
+        Returns:
+                pass
+        """
+        if self.print_error:
+            self.logger.error(line, extra={'line_nr': self.line_nr, 'hgnc_id': self.current_hgnc_id})
 
     def get_context(self, data):
         """Increments the global line_nr for each passing line.
@@ -161,6 +191,7 @@ class Genelist(object):
         for line in data:
             self.line_nr += 1
             self.current_hgnc_id = line['HGNC_symbol']
+            self.current_line = line
 
             yield line
 
@@ -212,26 +243,26 @@ class Genelist(object):
                 if len(rs) == 0:
                     if hgnc_symbol_i == len(hgnc_symbols):
                         not_found_id = hgnc_symbol if len(hgnc_symbols) == 1 else hgnc_symbols
-                        self.warn("Not found: %s %s" % (not_found_id, cond_values))
+                        self.error("Not found: %s %s" % (not_found_id, cond_values))
                         yield line # evenif we don't find an entry for it on ensEMBL
                     if not try_hgnc_again:
                         break
                 elif len(rs) > 1:
                     if hgnc_symbol_i > 1:
-                        self.warn("Took %s/%s" % (hgnc_symbol, hgnc_symbols))
+                        self.info("Took %s/%s" % (hgnc_symbol, hgnc_symbols))
                     # we couldn't resolve this with genenames.org
                     if 'Chromosome' in line:
-                        self.warn("Multiple entries: %s, chromosome: %s => " %
+                        self.info("Multiple entries: %s, chromosome: %s => " %
                                (hgnc_symbol, line['Chromosome']))
                     else:
-                        self.warn("Multiple entries: %s => " % (hgnc_symbol))
-                    self.warn("Adding: %s" % ', '.join((entry['Ensembl_gene_id'] for entry in rs)))
+                        self.info("Multiple entries: %s => " % (hgnc_symbol))
+                    self.info("Adding: %s" % ', '.join((entry['Ensembl_gene_id'] for entry in rs)))
                     for entry in rs:
                         yield self.merge_line(entry, line)
                     break
                 else:
                     if len(hgnc_symbols) > 1:
-                        self.warn("Took %s/%s" % (hgnc_symbol, hgnc_symbols))
+                        self.info("Took %s/%s" % (hgnc_symbol, hgnc_symbols))
                     for entry in rs:
                         yield self.merge_line(entry, line)
                     break
@@ -249,7 +280,7 @@ class Genelist(object):
 
         for column in self.gl_header:
             if column in line:
-                re.sub(r'^.*?:', '', str(line[column]))
+                line[column] = re.sub(r'^.*?:', '', str(line[column]))
         return line
 
     def prepend_hgnc(self, data):
@@ -296,8 +327,8 @@ class Genelist(object):
                 continue
             elif key in line:
                 if str(line[key]) != str(value):
-                    self.warn("%s: line '%s' differs from client '%s'" %
-                           (key, line[key], value))
+                    self.warn("{}: line '{}' differs from client '{}'".\
+                              format(key, line[key], value), key)
 
         merged = client.copy()
         merged.update(line)
@@ -359,7 +390,7 @@ class Genelist(object):
                         line[key] = re.sub(r'\s*[,;]\s*', ',', value.strip()) # rm whitespace
                         line[key] = re.sub(r',+', ',', line[key]) # collapse commas
                         line[key] = line[key].rstrip(',') # rm trailing commas
-                line = self.remove_hgnc_prefix(line)
+            line = self.remove_hgnc_prefix(line)
             yield line
 
     def list2dict(self, header, data):
@@ -408,12 +439,12 @@ class Genelist(object):
                 hgnc_symbol = self.mim2gene.resolve_gene(omim_id)
                 ensembl_gene_id = self.mim2gene.resolve_ensembl_gene_id(omim_id)
                 if hgnc_symbol != False and hgnc_symbol not in hgnc_symbols:
-                    self.warn("Add mim2gene HGNC symbol %s" % hgnc_symbol)
+                    self.info("Add mim2gene HGNC symbol %s" % hgnc_symbol)
                     hgnc_symbols.insert(0, hgnc_symbol)
                 if ensembl_gene_id != False and 'Ensembl_gene_id' in line.keys() \
                    and line['Ensembl_gene_id'] != ensembl_gene_id:
                     self.warn("morbidmap '{}' differs from local '{}'".\
-                           format(line['Ensembl_gene_id'], ensembl_gene_id))
+                           format(line['Ensembl_gene_id'], ensembl_gene_id), 'Ensembl_gene_id')
             line['HGNC_symbol'] = ','.join(hgnc_symbols)
             yield line
 
@@ -508,13 +539,13 @@ class Genelist(object):
                 official_symbol = genenames.official(HGNC_symbol, OMIM_morbid)
                 if official_symbol:
                     if official_symbol not in HGNC_symbols:
-                        self.warn('Add official HGNC symbol %s' % official_symbol)
+                        self.info('Add official HGNC symbol %s' % official_symbol)
                         line['HGNC_symbol'] = ','.join((official_symbol, line['HGNC_symbol']))
                     official_symbols.append(official_symbol)
                 else:
                     official_symbols.append(HGNC_symbol)
 
-            self.warn('Official symbols %s' % official_symbols)
+            self.info('Official symbols %s' % official_symbols)
             # ok, now we have several 'official' symbols. Take the most present one.
             # Create a Counter object, which will 'count' the items in the list and present a
             # list with (value, count) tuples.
@@ -522,7 +553,7 @@ class Genelist(object):
             sorted_count = sorted(Counter(official_symbols).items(), key=lambda x: x[1])
             # take the last element (the most present one) and of that the value of the tuple
             line['Official_HGNC_symbol'] = sorted_count[-1][0]
-            self.warn('Took %s as official symbol' % line['Official_HGNC_symbol'])
+            self.info('Took %s as official symbol' % line['Official_HGNC_symbol'])
 
             yield line
 
@@ -619,16 +650,16 @@ class Genelist(object):
                 if 'OMIM_morbid' in line \
                 and len(line['OMIM_morbid']) > 0 \
                 and str(line['OMIM_morbid']) != str(entry['mim_number']):
-                    self.warn('%s %s > %s client OMIM number differs from OMIM query' % \
-                           (line['HGNC_symbol'], line['OMIM_morbid'], entry['mim_number']))
+                    self.warn('{} > {} client OMIM number differs from OMIM query' % \
+                           (line['OMIM_morbid'], entry['mim_number']), 'OMIM_morbid')
                 line['OMIM_morbid'] = entry['mim_number']
 
             # add Gene_locus
             if entry['gene_location'] is not None:
                 if 'Gene_locus' in line and len(line['Gene_locus']) > 0 and \
                    line['Gene_locus'] != entry['gene_location']:
-                    self.warn('%s > %s client Gene locus differs from OMIM query' % \
-                           (line['Gene_locus'], entry['gene_location']))
+                    self.warn('{} > {} client Gene locus differs from OMIM query'.
+                           format(line['Gene_locus'], entry['gene_location']), 'Gene_locus')
                 line['Gene_locus'] = entry['gene_location']
             yield line
 
@@ -647,19 +678,56 @@ class Genelist(object):
 
             yield line
 
-    def annotate(self, lines, verbose=False, errors=False, download_mim2gene=False, mim2gene=False, zero=False):
+    def get_log_messages(self):
+        self.log_buffer_handler.flush()
+        self.log_buffer.flush()
+        return self.log_buffer.getvalue()
+
+    def setup_logging(self, level='INFO'):
+        """ Set up logging """
+        root_logger = logging.getLogger()
+        root_logger.setLevel(level)
+        
+        # customize formatter, align each column
+        template = "#%(line_nr)s [%(hgnc_id)s] %(message)s"
+        formatter = logging.Formatter(template)
+        fancy_formatter = logging.Formatter('\033[93m' + template + '\033[0m')
+        
+        # add a basic STDERR handler to the logger
+        console = logging.StreamHandler()
+        console.setLevel(level)
+        console.setFormatter(fancy_formatter)
+        root_logger.addHandler(console)
+
+	# add a basic Memory handler so we can prepend them to the genelist
+        self.log_buffer = StringIO()
+        self.log_buffer_handler = logging.StreamHandler(self.log_buffer)
+        self.log_buffer_handler.setLevel(level)
+        self.log_buffer_handler.setFormatter(formatter)
+        root_logger.addHandler(self.log_buffer_handler)
+
+        return root_logger
+
+    def annotate(self, lines, warn=False, error=False, info=False, report_empty=False, download_mim2gene=False, mim2gene=False, zero=False):
         """ Annotate a gene list """
 
         self.reset()
 
         # make sure we print if we are asked to
-        if verbose:
-            self.verbose = True
+        verbose = False
+        if info:
+            self.print_info = True
+            verbose = True
+        if warn:
+            self.print_warn = True
+            verbose = True
+        if error:
+            self.print_error = True
+            verbose = True
 
-        # show only the EnsEMBLdb conflicts - so verbose, but supress printing of the gene list
-        if errors:
-            self.verbose = True
-            self.errors_only = True
+        if report_empty:
+            self.report_empty = True
+            verbose = True
 
         raw_data = (line.strip() for line in lines) # sluuuurp
         parsable_data = (line.split("\t") for line in raw_data)
@@ -668,7 +736,7 @@ class Genelist(object):
         if mim2gene or download_mim2gene:
             mim2gene_filename = os.path.join(os.path.dirname(__file__), 'mim2gene.txt')
             if download_mim2gene:
-                self.warn('Downloading {} ... '.format(mim2gene_filename))
+                self.info('Downloading {} ... '.format(mim2gene_filename))
                 self.mim2gene = Mim2gene(filename=mim2gene_filename, download=True)
             else:
                 self.mim2gene = Mim2gene()
@@ -749,14 +817,13 @@ class Genelist(object):
         final_data = self.gather_contig(prefixed_data)
         print_data = []
         for line in final_data:
-            if self.verbose:
-                print(self.format_line(line))
+            print(self.format_line(line))
             print_data.append(line)
 
         # print the errors and warnings
         if verbose:
             # split the lines for easier unit testing
-            for line in self.error_buffer.getvalue().split('\n'):
+            for line in self.get_log_messages().split('\n'):
                 yield line
 
         # print the gene list
