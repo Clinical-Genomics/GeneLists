@@ -1,8 +1,8 @@
 from genelist.modules.genelist import Genelist
 
-genelist = Genelist()
+def test_annotate(config_stream):
+    genelist = Genelist(config_stream)
 
-def test_annotate():
     # read in the starting file (an annotated, albeit bare list create with the 'genelist merge' command
     bare_file = open('tests/fixtures/cust000-Clinical_master_list-bare.txt', 'r')
     bare_lines = [line for line in bare_file]
