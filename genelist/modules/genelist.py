@@ -50,9 +50,9 @@ class Genelist(object):
             user=self.config['ensembl']['user'],
             db=self.config['ensembl']['db'])
 
-        self.reset()
         self.logger = logging.getLogger(__name__)
         self.setup_logging(level='DEBUG')
+        self.reset()
 
     def reset(self):
         """ Reset state for a next genelist to annotate """
@@ -67,7 +67,10 @@ class Genelist(object):
         self.print_warn = False
         self.print_error = False
         self.report_empty = False
-        #self.log_buffer = StringIO()
+
+        # reset the StringIO
+        self.log_buffer.truncate(0)
+        self.log_buffer.seek(0)
 
     def print_header(self, header=None):
         """
@@ -681,6 +684,7 @@ class Genelist(object):
     def get_log_messages(self):
         self.log_buffer_handler.flush()
         self.log_buffer.flush()
+
         return self.log_buffer.getvalue()
 
     def setup_logging(self, level='INFO'):
