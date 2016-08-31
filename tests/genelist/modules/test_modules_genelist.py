@@ -3,7 +3,7 @@ from genelist.modules.genelist import Genelist
 def test_annotate(config_stream):
     genelist = Genelist(config_stream)
 
-    # read in the starting file (an annotated, albeit bare list create with the 'genelist merge' command
+    # read in the an annotated, albeit bare list create with the 'genelist merge' command
     bare_file = open('tests/fixtures/cust000-Clinical_master_list-bare.txt', 'r')
     bare_lines = [line for line in bare_file]
 
@@ -21,19 +21,24 @@ def test_annotate(config_stream):
     mim2gene_verbose_lines = [line for line in mim2gene_verbose_file]
 
     # test if we get the same gene list with and without verbosity
-    lines_out = [line + '\n' for line in genelist.annotate(bare_lines, verbose=False, errors=False,
-            download_mim2gene=False, mim2gene=False, zero=False)]
+    lines_out = [line + '\n' for line in genelist.annotate(bare_lines, info=False, warn=False,
+                                                           error=False, download_mim2gene=False,
+                                                           mim2gene=False, zero=False)]
     assert annotated_lines == lines_out
 
-    lines_out = [line + '\n' for line in genelist.annotate(bare_lines, verbose=True, errors=False,
-            download_mim2gene=False, mim2gene=False, zero=False)]
+    lines_out = [line + '\n' for line in genelist.annotate(bare_lines, info=True, warn=True,
+                                                           error=True, download_mim2gene=False,
+                                                           mim2gene=False, zero=False)]
     assert annotated_verbose_lines == lines_out
 
     # test if we get the same gene list with and without mim2gene enabled
-    lines_out = [line + '\n' for line in genelist.annotate(bare_lines, verbose=False, errors=False,
-            download_mim2gene=False, mim2gene=True, zero=False)]
+    lines_out = [line + '\n' for line in genelist.annotate(bare_lines, info=False, warn=False,
+                                                           error=False, download_mim2gene=False,
+                                                           mim2gene=True, zero=False)]
     assert mim2gene_lines == lines_out
 
-    lines_out = [line + '\n' for line in genelist.annotate(bare_lines, verbose=True, errors=False,
-            download_mim2gene=False, mim2gene=True, zero=False)]
+    lines_out = [line + '\n' for line in genelist.annotate(bare_lines, info=True, warn=True,
+                                                           error=True, download_mim2gene=False,
+                                                           mim2gene=True, zero=False)]
+
     assert mim2gene_verbose_lines == lines_out

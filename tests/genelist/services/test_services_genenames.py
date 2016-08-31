@@ -4,6 +4,7 @@ genenames = Genenames()
 
 def test_uniprot():
     assert genenames.uniprot('FARS2') == ['O95363']
+    assert genenames.uniprot('GNAS') == ['O95467', 'P63092', 'P84996', 'Q5JWF2']
 
 def test_refseq():
     assert genenames.refseq('FARS2') == ['NM_006567']
