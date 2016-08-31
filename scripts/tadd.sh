@@ -108,11 +108,14 @@ git push
 git push --tags origin
 
 # update clinicalgenomics.se
-#cd $SCRIPT_PATH/..
-#python -m scripts.update_cg $(dirname $(dirname $(readlink -nm $GENELIST)))/cust00[01234]/cust*.txt > ~/git/clinical-genomics.github.io/_topics/namnpagenlistor.md
-#cd ~/git/clinical-genomics.github.io
-#git pull
-#git add _topics/namnpagenlistor.md
-#git commit -m "Update to $(basename $GENELIST)"
-#git push
+cd ~/git/clinical-genomics.github.io
+git checkout source
+cd -
+cd $SCRIPT_PATH/..
+python -m scripts.update_cg $(dirname $(dirname $(readlink -nm $GENELIST)))/cust00[01234]/cust*.txt > ~/git/clinical-genomics.github.io/_topics/namnpagenlistor.md
+cd ~/git/clinical-genomics.github.io
+git pull
+git add _topics/namnpagenlistor.md
+git commit -m "Update to $(basename $GENELIST)"
+git push
 cd $OLD_WD

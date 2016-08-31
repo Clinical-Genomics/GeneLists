@@ -9,8 +9,8 @@ import os
 import re
 from datetime import datetime
 
-from .git import getgitlastmoddate, getgittag
-from .acronyms import Acronyms
+from genelist.utils.git import getgitlastmoddate, getgittag
+from genelist.utils.acronyms import Acronyms
 
 def panels_2_html(panels, acronyms):
     """Converts a list of panel acronyms to a HTML list.
