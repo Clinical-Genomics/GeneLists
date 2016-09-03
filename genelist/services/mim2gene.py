@@ -24,6 +24,7 @@ class Mim2gene(object):
         self.filename = filename
 
         # init
+        self.omim_of = {} # HGNC_symbol: OMIM_id
         self.symbol_of = {} # OMIM_id: HGNC_symbol
         self.ensembl_gene_id_of = {} # OMIM_id: ensEMBL_gene_id
         self.type_of = {} # HGNC_symbol: OMIM_type
@@ -52,17 +53,20 @@ class Mim2gene(object):
         """
 
         mim2gene_fh = open(filename, 'r')
-        lines = (line for line in mim2gene_fh)
+        lines = (line.rstrip('\n') for line in mim2gene_fh)
         for line in lines:
             if line.startswith('#'):
                 continue
-            (file_omim_id, omim_type, gene_id, hgnc_symbol, ensembl_gene_id) = line.split("\t")
-            if omim_type in ('gene', 'gene/phenotype') and hgnc_symbol:
-                self.symbol_of[file_omim_id] = hgnc_symbol
-                self.ensembl_gene_id_of[file_omim_id] = ensembl_gene_id.split(',')[0]
+            (file_omim_id, omim_type, gene_id, hgnc_symbol, ensembl) = line.split("\t")
+            ensembl_gene_id = ensembl.split(',')[0]
+            self.omim_of[hgnc_symbol] = file_omim_id
+            self.symbol_of[file_omim_id] = hgnc_symbol if hgnc_symbol else False
+            self.ensembl_gene_id_of[file_omim_id] = ensembl_gene_id if ensembl_gene_id else False
             self.type_of[hgnc_symbol] = omim_type
+            # this works because omim_id != hgnc_symbol, for all hgnc_symbol
+            self.type_of[file_omim_id] = omim_type
 
-    def resolve_gene(self, omim_id):
+    def get_hgnc(self, omim_id, only_gene=True):
         """Looks up the omim_id in the mim2gene.txt file.
         If found and the omim type is 'gene', return the official HGNC symbol
 
@@ -75,15 +79,17 @@ class Mim2gene(object):
         """
 
         if omim_id in self.symbol_of:
-            return self.symbol_of[omim_id]
+            hgnc_type = self.type_of[omim_id]
+            if not only_gene or hgnc_type in ('gene', 'gene/phenotype'):
+                return self.symbol_of[omim_id]
         return False
 
-    def resolve_ensembl_gene_id(self, omim_id):
+    def get_ensembl(self, omim_id):
         """Looks up the EnsEMBL gene id in the mim2gene.txt file.
         If found and the omim type is 'gene', return it
 
         Args:
-                omim_id (int): the omim id
+            omim_id (int): the omim id
 
         Returns: on omim id match, EnsEMBL gene id if type of gene or gene/phenotype otherwise False
         """
@@ -96,6 +102,6 @@ class Mim2gene(object):
 
     def is_gene(self, hgnc_symbol):
         if hgnc_symbol in self.type_of and \
-           self.type_of[ hgnc_symbol ] in ('gene', 'gene/phenotype'):
+           self.type_of[hgnc_symbol] in ('gene', 'gene/phenotype'):
                return True
         return False
