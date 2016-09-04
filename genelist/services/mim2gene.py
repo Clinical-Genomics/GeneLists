@@ -66,7 +66,7 @@ class Mim2gene(object):
             # this works because omim_id != hgnc_symbol, for all hgnc_symbol
             self.type_of[file_omim_id] = omim_type
 
-    def get_hgnc(self, omim_id, only_gene=True):
+    def get_hgnc(self, omim_id, only_gene=False):
         """Looks up the omim_id in the mim2gene.txt file.
         If found and the omim type is 'gene', return the official HGNC symbol
 
@@ -80,7 +80,7 @@ class Mim2gene(object):
 
         if omim_id in self.symbol_of:
             hgnc_type = self.type_of[omim_id]
-            if not only_gene or hgnc_type in ('gene', 'gene/phenotype'):
+            if not only_gene or is_gene(omim_id):
                 return self.symbol_of[omim_id]
         return False
 
@@ -98,6 +98,19 @@ class Mim2gene(object):
            self.ensembl_gene_id_of[omim_id] != None and \
            self.ensembl_gene_id_of[omim_id] != '-':
             return self.ensembl_gene_id_of[omim_id]
+        return False
+
+    def get_omim(self, hgnc_symbol):
+        """Looks up the OMIM id in the mim2gene.txt file.
+
+        Args:
+            hgnc_symbol (str): the HGNC symbol
+
+        Returns: on HGNC symbol match, an OMIM id otherwise False
+        """
+
+        if hgnc_symbol in self.omim_of:
+            return self.omim_of[hgnc_symbol]
         return False
 
     def is_gene(self, hgnc_symbol):
