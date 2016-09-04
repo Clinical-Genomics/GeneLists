@@ -5,6 +5,7 @@ import logging
 import click
 
 from .modules.genelist import Genelist
+from .modules.fetch import Fetch
 from .modules.sanity import Sanity
 from .modules.panels import get_panels
 from .modules.merge import merge_panels
@@ -37,13 +38,38 @@ def run():
               help='Will try to resolve an HGNC symbol with the help of mim2gene.txt.')
 @click.option('--config', '-c', required=True, type=click.File('r'),
               help='YAML config file.')
-def fetch(infile, outfile, zero, warn, error, info, download_mim2gene, mim2gene, report_empty, config):
+def genelist(infile, outfile, zero, warn, error, info, download_mim2gene, mim2gene, report_empty, config):
     """Fetch all annotations."""
 
     genelist = Genelist(config)
 
     for line in genelist.annotate(lines=infile, zero=zero, info=info, error=error, warn=warn,
             download_mim2gene=download_mim2gene, mim2gene=mim2gene, report_empty=report_empty):
+        outfile.write(line + '\n')
+
+@run.command()
+@click.argument('infile', nargs=1, type=click.File('r'))
+@click.argument('outfile', nargs=1, type=click.File('w'))
+@click.option('--remove-non-genes', is_flag=True, default=False, show_default=True,
+              help='Removes non-genes. Based on mim2gene.')
+@click.option('--warn', is_flag=True, default=False, show_default=True,
+              help='Print minor conflicts.')
+@click.option('--error', is_flag=True, default=False, show_default=True,
+              help='Print severe conflicts.')
+@click.option('--info', is_flag=True, default=False, show_default=True,
+              help='Be more verbose.')
+@click.option('--report-empty', is_flag=True, default=False, show_default=True,
+              help='Report warnings from empty fields.')
+@click.option('--download_mim2gene', is_flag=True, default=False, show_default=True,
+              help='Will download a new version of mim2gene.txt, used to check the OMIM type.')
+@click.option('--config', '-c', required=True, type=click.File('r'),
+              help='YAML config file.')
+def fetch(infile, outfile, remove_non_genes, warn, error, info, download_mim2gene, report_empty, config):
+    """Fetch all annotations."""
+
+    fetch = Fetch(config, download_mim2gene=download_mim2gene)
+
+    for line in fetch.annotate(lines=infile, remove_non_genes=remove_non_genes, info=info, error=error, warn=warn, report_empty=report_empty):
         outfile.write(line + '\n')
 
 @run.command()
