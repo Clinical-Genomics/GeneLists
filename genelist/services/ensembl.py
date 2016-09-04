@@ -17,6 +17,57 @@ class Ensembl:
     def __exit__(self, type, value, traceback):
         self.conn.close()
 
+    def query(self, ensembl_id):
+        """Queries EnsEMBL based on the Ensembl_gene_id. Data from EnsEMBLdb will overwrite
+        the client data.
+        An identifiers should yield one result from EnsEMBLdb.
+
+        Args:
+            ensembl_id (str): the EnsEMBL gene id.
+
+        Yields (dict):
+            { gene start,
+            gene stop,
+            chromosome,
+            hgnc symbol }
+            
+        """
+
+        base_query = """
+        SELECT g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop,
+        x.display_label AS HGNC_symbol, g.stable_id AS Ensembl_gene_id,
+        seq_region.name AS Chromosome
+        FROM gene g JOIN xref x ON x.xref_id = g.display_xref_id
+        join seq_region USING (seq_region_id)
+        """
+        keys_conds = {
+            'Ensembl_gene_id': 'g.stable_id',
+        }
+        # these columns will be put into the condition statement if they have a value
+        keys = ['Ensembl_gene_id']
+        key_values = {'Ensembl_gene_id': ensembl_id}
+
+        # create the query conditons
+        conds = ["%s = %%s" % keys_conds[key] for key in keys]
+                 #if key in line and line[key] != None and len(line[key]) > 0]
+        cond_values = [key_values[key] for key in keys]
+                       #if key in line and line[key] != None and len(line[key]) > 0]
+
+        # check on length of the region name to exclude scaffolds and patches
+        query = "%s where length(seq_region.name) < 3 and %s" % \
+                (base_query, " and ".join(conds))
+
+        # execute the query
+        cur = self.conn.cursor(pymysql.cursors.DictCursor)
+        cur.execute(query, cond_values)
+        rs = cur.fetchall() # result set
+
+        if len(rs) == 0:
+            return False
+        else:
+            for entry in rs:
+                yield entry
+
     def query_transcripts(self, gene_id=None):
         """Queries EnsEMBL for all transcripts.
 
