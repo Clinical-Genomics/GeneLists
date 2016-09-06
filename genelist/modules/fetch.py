@@ -2,13 +2,12 @@
 # encoding: utf-8
 
 from __future__ import print_function
-import pymysql
+import sys
 import re
 import os
 import yaml
 import logging
 from io import StringIO
-from collections import Counter
 
 from ..services.omim import OMIM
 from ..services.ensembl import Ensembl
@@ -57,14 +56,6 @@ class Fetch(object):
                               'HGNC_RefSeq_NM', 'Uniprot_protein_name']
 
         self.config = yaml.load(config)
-
-        # EnsEMBL connection
-        self.conn = pymysql.connect(
-            host=self.config['ensembl']['host'],
-            port=self.config['ensembl']['port'],
-            user=self.config['ensembl']['user'],
-            db=self.config['ensembl']['db'])
-
         self.logger = logging.getLogger(__name__)
         self.setup_logging(level='DEBUG')
 
@@ -85,6 +76,7 @@ class Fetch(object):
         self.print_warn = False
         self.print_error = False
         self.report_empty = False
+        self.remove_non_genes = False
 
         # reset the StringIO
         self.log_buffer.truncate(0)
@@ -157,7 +149,8 @@ class Fetch(object):
         print(self.format_line(line))
 
     def warn(self, line, key=None):
-        """print only if the verbose switch has been set
+        """print only if the verbose switch has been set.
+        Warn is used when a value in the genelist will be overwritten.
 
         Args:
                 line (str): line to print to STDOUT
@@ -190,6 +183,8 @@ class Fetch(object):
 
     def error(self, line):
         """print only if the verbose switch has been set
+        Error is used when a mandatory value in the genelist cannot be retrieved.
+        e.g. Ensembl_gene_id cannot be filled in.
 
         Args:
                 line (str): line to print to STDOUT
@@ -298,7 +293,12 @@ class Fetch(object):
 
     def merge_line(self, line, client):
         """Will merge line with client.
-           ens will take precedence over client. Changes will be reported.
+           line will take precedence over client. Changes will be reported.
+
+           Following will not be reported:
+           - Gene_start, Gene_stop changes
+           - Updating a missing value
+           - Updating HGNC_symbol when symbol is present in client's HGNC_symbols
 
         Args:
                 line (dict): dict with new values.
@@ -318,40 +318,29 @@ class Fetch(object):
                 continue
             else:
                 if str(line[key]) != str(value):
-                    self.warn("{}: line '{}' differs from client '{}'".\
-                              format(key, line[key], value), key)
+                    # don't report HGNC mismatches if multiple given
+                    if key == 'HGNC_symbol' and line[key] in client['HGNC_symbols']:
+                        continue
+                    caller = sys._getframe(1).f_code.co_name
+                    self.warn("[{}] {}: line '{}' differs from client '{}'".\
+                              format(caller, key, line[key], value), key)
 
         merged = client.copy()
         merged.update(line)
         return merged
 
-    def add_mim2gene_alias(self, data):
-        """Looks up the most recent HGNC symbol for an HGNC alias in mim2gene.txt and
-        prepends it to the HGNC_symbol column.
-        Normally, the most recent symbol will have more chance to have a hit in EnsEMBLdb.
-        Only use this function when mim2gene switch is active
-
-        Args:
-                data (list of dicts): Inner dict represents a row in a gene list
-
-        Yields:
-                dict: with the added HGNC symbol prepended to the HGNC_symbol column.
+    def pick_hgnc_symbol(self, data):
+        """ If multiple HGNC symbols, pick first one as main symbol.
+        Rest is stored in HGNC_symbols.
         """
         for line in data:
-            hgnc_symbols = line['HGNC_symbol'].split(',')
-            if 'OMIM_morbid' in line:
-                omim_id = line['OMIM_morbid']
-                hgnc_symbol = self.mim2gene.resolve_gene(omim_id)
-                ensembl_gene_id = self.mim2gene.resolve_ensembl_gene_id(omim_id)
-                if hgnc_symbol != False and hgnc_symbol not in hgnc_symbols:
-                    self.info("Add mim2gene HGNC symbol %s" % hgnc_symbol)
-                    hgnc_symbols.insert(0, hgnc_symbol)
-                if ensembl_gene_id != False and 'Ensembl_gene_id' in line.keys() \
-                   and line['Ensembl_gene_id'] != ensembl_gene_id:
-                    self.warn("morbidmap '{}' differs from local '{}'".\
-                           format(line['Ensembl_gene_id'], ensembl_gene_id), 'Ensembl_gene_id')
-            line['HGNC_symbol'] = ','.join(hgnc_symbols)
+            hgnc_symbol = there(line, 'HGNC_symbol')
+            hgnc_symbols = hgnc_symbol.split(',')
+            line['HGNC_symbols'] = hgnc_symbols
+            line['HGNC_symbol'] = hgnc_symbols[0]
+
             yield line
+
 
     def init_mim2gene(self, download_mim2gene):
         mim2gene_filename = os.path.join(os.path.dirname(__file__), 'mim2gene.txt')
@@ -360,6 +349,21 @@ class Fetch(object):
             return Mim2gene(filename=mim2gene_filename, download=True)
         else:
             return Mim2gene(filename=mim2gene_filename)
+
+    def remove_from_mim2gene(self, data):
+        """Based on mim2gene.txt, you can remove all non genes.
+
+        Args:
+                data (list of dicts): Inner dict represents a row in a gene list
+
+        Yields:
+                dict: with all-non genes removed
+        """
+        for line in data:
+            if not self.remove_non_genes or self.mim2gene.is_gene(line['OMIM_morbid']):
+                yield line
+            else:
+                self.warn('Removed non gene: {}'.format(line['HGNC_symbol']))
 
     def fill_from_mim2gene(self, data):
         """ Fill in HGNC symbol, OMIM id and ensembl_gene_id.
@@ -387,7 +391,7 @@ class Fetch(object):
                 yield self.merge_line(
                     {
                         'HGNC_symbol': self.mim2gene.get_hgnc(omim),
-                        'Ensembl_gene_id': self.mim2gene.get_ensembl(omim)
+                        #'Ensembl_gene_id': self.mim2gene.get_ensembl(omim)
                     },
                     line
                 )
@@ -397,7 +401,7 @@ class Fetch(object):
                 yield self.merge_line(
                     {
                         'OMIM_morbid': self.mim2gene.get_omim(hgnc),
-                        'Ensembl_gene_id': self.mim2gene.get_ensembl(hgnc)
+                        #'Ensembl_gene_id': self.mim2gene.get_ensembl(hgnc)
                     },
                     line
                 )
@@ -420,10 +424,158 @@ class Fetch(object):
         """
         with Ensembl() as ensembldb:
             for line in data:
-                ensembl_gene_id = there(line, 'Ensembl_gene_id')
-                if ensembl_gene_id:
-                    for ensembl_line in ensembldb.query(ensembl_gene_id):
-                        yield self.merge_line(ensembl_line, line)
+                omim_morbid = there(line, 'OMIM_morbid')
+                if omim_morbid:
+                    ensembl_lines = ensembldb.query_omim(omim_morbid)
+                    if ensembl_lines:
+                        warn = self.print_warn
+                        if len(ensembl_lines) > 1:
+                            e_ids = [entry['Ensembl_gene_id'] for entry in ensembl_lines]
+                            self.info('Multiple E! entries: {}. Skip warnings.'.format(e_ids))
+
+                            ensembl_gene_id = there(line, 'Ensembl_gene_id')
+                            if ensembl_gene_id in e_ids:
+                                self.print_warn = False
+                        for ensembl_line in ensembl_lines:
+                            yield self.merge_line(ensembl_line, line)
+                        self.print_warn = warn
+                    else:
+                        yield line
+                else:
+                    yield line
+
+    def query_transcripts(self, data):
+        """Queries EnsEMBL for all transcripts.
+
+        Args
+            data (list of dicts): representing the lines and columns in a gene list.
+                The keys of the dicts must match the column names of the EnsEMBLdb query.
+
+        Yields (dict):
+            a row with transcript data from ensEMBLdb filled in.
+        """
+
+        with Ensembl() as ensembldb:
+            for line in data:
+                omim_morbid = there(line, 'OMIM_morbid')
+                if omim_morbid:
+                    transcripts = ensembldb.query_transcripts_omim(omim_morbid)
+                    if transcripts is not None:
+                        line = self.merge_line(transcripts, line)
+                yield line
+
+    def add_uniprot(self, data):
+        """ Add the UniProt ID and UniProt protein name based on the official HGNC symbol.
+
+        Args:
+                data (list of dicts): Inner dict represents a row in a gene list
+
+        Yields:
+                dict: now with the UniProt information.
+        """
+        genenames = Genenames()
+        uniprot = Uniprot()
+        for line in data:
+            uniprot_ids = genenames.uniprot(line['HGNC_symbol'])
+            uniprot_ids = uniprot_ids if uniprot_ids != None else ''
+            uniprot_ids_joined = self.delimiter.join(uniprot_ids)
+            uniprot_description = ''
+            if len(uniprot_ids) > 1:
+                self.info('Multiple UniProt IDs: ' + uniprot_ids_joined)
+            for uniprot_id in uniprot_ids:
+                uniprot_description = uniprot.fetch_description(uniprot_id)
+
+            yield self.merge_line(
+                {
+                    'Uniprot_protein_name': uniprot_description,
+                    'UniProt_id': uniprot_ids_joined
+                },
+                line
+            )
+
+    def add_refseq(self, data):
+        """ Add the RefSeq ID based on the official HGNC symbol.
+
+        Args:
+                data (list of dicts): Inner dict represents a row in a gene list
+
+        Yields:
+                dict: now with the RefSeq information.
+        """
+        genenames = Genenames()
+        for line in data:
+            refseq = genenames.refseq(line['HGNC_symbol'])
+            refseq = self.delimiter.join(refseq) if refseq != None else ''
+            yield self.merge_line({'HGNC_RefSeq_NM': refseq}, line)
+
+    def query_omim(self, data):
+        """Queries OMIM to fill in the inheritance models
+
+        Args:
+                data (list of dicts): Inner dict represents a row in a gene list
+
+        Yields:
+                dict: with the added HGNC symbol prepended to the HGNC_symbol column.
+        """
+        omim = OMIM(api_key=self.config['OMIM']['api_key'])
+        for line in data:
+            omim_morbid = there(line, 'OMIM_morbid')
+            if omim_morbid and 'Chromosome' in line:
+                entry = omim.gene(mim_number=omim_morbid)
+            elif 'HGNC_symbol' in line and 'Chromosome' in line:
+                entry = omim.gene(hgnc_symbol=line['HGNC_symbol'])
+            else:
+                yield line
+                continue
+
+            phenotypic_disease_models = omim.\
+                parse_phenotypic_disease_models(entry['phenotypes'], line['Chromosome'])
+
+            # extract the inheritance model
+            line_phenotypic_disease_models = []
+            # if any inheritance models and omim numbers are present, use them!
+            for omim_number, inheritance_models in phenotypic_disease_models.items():
+                if omim_number is not None:
+                    inheritance_models_str = ''
+                    if inheritance_models is not None:
+                        inheritance_models_str = '>' + '/'.join(inheritance_models)
+                    line_phenotypic_disease_models.append('%s%s' % ( \
+                        omim_number,
+                        inheritance_models_str))
+
+            if len(line_phenotypic_disease_models) > 0:
+                line['Phenotypic_disease_model'] = '|'.join(line_phenotypic_disease_models)
+            else:
+                line['Phenotypic_disease_model'] = ''
+            # add OMIM morbid
+            if entry['mim_number'] is not None:
+                if omim_morbid and str(omim_morbid) != str(entry['mim_number']):
+                    self.warn('{} > {} client OMIM number differs from OMIM query' % \
+                           (omim_morbid, entry['mim_number']), 'OMIM_morbid')
+                line['OMIM_morbid'] = entry['mim_number']
+
+            # add Gene_locus
+            if entry['gene_location'] is not None:
+                if there(line, 'Gene_locus') and \
+                   line['Gene_locus'] != entry['gene_location']:
+                    self.warn('{} > {} client Gene locus differs from OMIM query'.
+                           format(line['Gene_locus'], entry['gene_location']), 'Gene_locus')
+                line['Gene_locus'] = entry['gene_location']
+            yield line
+
+    def redpen2symbol(self, data):
+        """If reduced penetrance is set, replace it with the HGNC symbol
+
+        Args:
+                data (list of dicts): Inner dict represents a row in a gene list
+
+        Yields:
+                dict: with the replaced red pen to HGNC symbol
+        """
+        for line in data:
+            if 'Reduced_penetrance' in line and line['Reduced_penetrance'].lower() == 'yes':
+                line['Reduced_penetrance'] = line['HGNC_symbol']
+            yield line
 
     def fill(self, data):
         """ Removes #NA's and fills in '' for missing values.
@@ -492,6 +644,9 @@ class Fetch(object):
             self.report_empty = True
             verbose = True
 
+        if remove_non_genes:
+            self.remove_non_genes = True
+
         # slurp and make a line
         raw_data = (line.strip() for line in lines) # sluuuurp
         parsable_data = (line.split("\t") for line in raw_data)
@@ -518,16 +673,37 @@ class Fetch(object):
         # clean up the input
         clean_data = self.cleanup(context_data)
 
+        # remove none genes
+        reduced_data = self.remove_from_mim2gene(clean_data)
+
+        # pick one HGNC symbol
+        hgnc_data = self.pick_hgnc_symbol(reduced_data)
+
         # Get OMIM morbid number
         # Get E!
         # all from mim2gene, the magical file
-        mim2gene_data = self.fill_from_mim2gene(clean_data)
+        mim2gene_data = self.fill_from_mim2gene(hgnc_data)
 
         # fill in info from ensembl
         ensembl_data = self.fill_from_ensembl(mim2gene_data)
 
+        # aggregate transcripts
+        transcript_data = self.query_transcripts(ensembl_data)
+
+        ## add uniprot
+        uniprot_data = self.add_uniprot(transcript_data)
+
+        ## add refseq
+        refseq_data = self.add_refseq(uniprot_data)
+
+        ## fill in the inheritance models
+        omim_data = self.query_omim(refseq_data)
+
+        ## do some replacements
+        redpen_data = self.redpen2symbol(omim_data)
+
         # fill in missing values with ''
-        completed_data = self.fill(ensembl_data)
+        completed_data = self.fill(redpen_data)
 
         # at last, clean up the output
         cleaner_data = self.cleanup(completed_data)
