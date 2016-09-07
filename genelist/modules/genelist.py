@@ -246,7 +246,7 @@ class Genelist(object):
                 if len(rs) == 0:
                     if hgnc_symbol_i == len(hgnc_symbols):
                         not_found_id = hgnc_symbol if len(hgnc_symbols) == 1 else hgnc_symbols
-                        self.error("Not found: %s %s" % (not_found_id, cond_values))
+                        self.error("No hit on E!: %s %s" % (not_found_id, cond_values))
                         yield line # evenif we don't find an entry for it on ensEMBL
                     if not try_hgnc_again:
                         break
@@ -575,6 +575,7 @@ class Genelist(object):
             uniprot_ids = genenames.uniprot(line['Official_HGNC_symbol'])
             uniprot_ids = uniprot_ids if uniprot_ids != None else ''
             uniprot_ids_joined = self.delimiter.join(uniprot_ids)
+            uniprot_description = ''
             if len(uniprot_ids) > 1:
                 self.warn('Multiple UniProt IDs: ' + uniprot_ids_joined)
             if 'UniProt_id' in line and line['UniProt_id']:
@@ -689,7 +690,7 @@ class Genelist(object):
 
     def setup_logging(self, level='INFO'):
         """ Set up logging """
-        root_logger = logging.getLogger()
+        root_logger = logging.getLogger(__name__) # only log this package
         root_logger.setLevel(level)
         
         # customize formatter, align each column
