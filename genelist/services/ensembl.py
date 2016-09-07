@@ -168,7 +168,6 @@ class Ensembl:
                 'Gene_start': row['Gene_start'],
                 'Gene_stop': row['Gene_stop'],
                 'Chromosome': row['Chromosome'],
-                'HGNC_symbol': row['HGNC_symbol'],
                 'Ensembl_gene_id': ensembl_gene_id
             }
             transcripts = {row['Transcript_ID']: [row['RefSeq_ID']]}
@@ -188,7 +187,6 @@ class Ensembl:
                         'Gene_start': row['Gene_start'],
                         'Gene_stop': row['Gene_stop'],
                         'Chromosome': row['Chromosome'],
-                        'HGNC_symbol': row['HGNC_symbol'],
                         'Ensembl_gene_id': ensembl_gene_id
                     }
 
@@ -207,7 +205,7 @@ class Ensembl:
 
         base_query = """
         SELECT DISTINCT g.seq_region_start AS Gene_start, g.seq_region_end AS Gene_stop,
-        x.display_label AS HGNC_symbol, g.stable_id AS Ensembl_gene_id, sr.name AS Chromosome,
+        g.stable_id AS Ensembl_gene_id, sr.name AS Chromosome,
         t.stable_id AS Transcript_ID, g.description, tx.dbprimary_acc AS RefSeq_ID
         FROM gene g JOIN xref x ON x.xref_id = g.display_xref_id
         JOIN seq_region sr ON sr.seq_region_id = g.seq_region_id
