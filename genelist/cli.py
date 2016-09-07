@@ -4,7 +4,6 @@
 import logging
 import click
 
-from .modules.genelist import Genelist
 from .modules.fetch import Fetch
 from .modules.sanity import Sanity
 from .modules.panels import get_panels
