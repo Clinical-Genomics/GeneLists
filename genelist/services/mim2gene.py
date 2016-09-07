@@ -58,6 +58,7 @@ class Mim2gene(object):
             if line.startswith('#'):
                 continue
             (file_omim_id, omim_type, gene_id, hgnc_symbol, ensembl) = line.split("\t")
+            hgnc_symbol = hgnc_symbol.upper()
             ensembl_gene_id = ensembl.split(',')[0]
             self.omim_of[hgnc_symbol] = file_omim_id
             self.symbol_of[file_omim_id] = hgnc_symbol if hgnc_symbol else False
