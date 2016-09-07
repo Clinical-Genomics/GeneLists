@@ -319,8 +319,8 @@ class Fetch(object):
             else:
                 if str(line[key]) != str(value):
                     # don't report HGNC mismatches if multiple given
-                    if key == 'HGNC_symbol' and line[key] in client['HGNC_symbols']:
-                        continue
+                    #if key == 'HGNC_symbol' and line[key] in client['HGNC_symbols']:
+                    #    continue
                     caller = sys._getframe(1).f_code.co_name
                     self.warn("[{}] {}: line '{}' differs from client '{}'".\
                               format(caller, key, line[key], value), key)
@@ -336,8 +336,9 @@ class Fetch(object):
         for line in data:
             hgnc_symbol = there(line, 'HGNC_symbol')
             hgnc_symbols = hgnc_symbol.split(',')
-            line['HGNC_symbols'] = hgnc_symbols
-            line['HGNC_symbol'] = hgnc_symbols[0]
+            line['HGNC_symbols'] = hgnc_symbols # all symbols as a list
+            line['HGNC_symbol'] = hgnc_symbols[0] # the proper HGNC smbol
+            line['HGNC_symbol_start'] = hgnc_symbols[0] # in case the above changes we still have the oriinal one
 
             yield line
 
@@ -577,6 +578,23 @@ class Fetch(object):
                 line['Reduced_penetrance'] = line['HGNC_symbol']
             yield line
 
+    def fill_alias(self, data):
+        """If the starting HGNC ends up beign different than the endin HGNC symbol,
+        add it to the alias column. Chck if the gene symbol isn't already present in the 
+        alias list.
+        """
+        for line in data:
+            hgnc_symbol = there(line, 'HGNC_symbol')
+            hgnc_symbol_start = there(line, 'HGNC_symbol_start')
+            if hgnc_symbol != hgnc_symbol_start:
+                alias = there(line, 'Alias')
+                aliases = alias.split(',') if alias else []
+                if hgnc_symbol_start not in aliases:
+                    aliases.append(hgnc_symbol_start)
+                    self.info('Adding {} to Alias'.format(hgnc_symbol_start))
+                    line['Alias'] = ','.join(aliases)
+            yield line
+
     def fill(self, data):
         """ Removes #NA's and fills in '' for missing values.
 
@@ -705,8 +723,11 @@ class Fetch(object):
         # fill in missing values with ''
         completed_data = self.fill(redpen_data)
 
+        # add the alias if any
+        aliased_data = self.fill_alias(completed_data)
+
         # at last, clean up the output
-        cleaner_data = self.cleanup(completed_data)
+        cleaner_data = self.cleanup(aliased_data)
 
         # prepend the HGNC symbol to some fields
         prefixed_data = self.prepend_hgnc(cleaner_data)
