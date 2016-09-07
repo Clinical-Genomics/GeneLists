@@ -165,8 +165,9 @@ class Sanity(object):
         yields: a line of the lines
         """
         for line in lines:
-            if int(line['Gene_stop']) - int(line['Gene_start']) <= 0:
-                self.warn('Gene coordinates are not above zero.')
+            if line['Gene_stop'] and line['Gene_start']:
+                if int(line['Gene_stop']) - int(line['Gene_start']) <= 0:
+                    self.warn('Gene coordinates are not above zero.')
             yield line
 
     def check_duplicates(self, lines):
