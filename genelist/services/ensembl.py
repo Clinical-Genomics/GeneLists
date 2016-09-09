@@ -7,10 +7,10 @@ from ..utils import cleanup_description
 
 class Ensembl:
 
-    def __init__(self, host='localhost', port=3306, user='anonymous', db='homo_sapiens_core_75_37'):
+    def __init__(self, host='localhost', port=3306, user='anonymous', db='homo_sapiens_core_85_37'):
         self.conn = pymysql.connect(host=host, port=port, user=user, db=db)
 
-    def __enter__(self, host='localhost', port=3306, user='anonymous', db='homo_sapiens_core_75_37'):
+    def __enter__(self, host='localhost', port=3306, user='anonymous', db='homo_sapiens_core_85_37'):
         self.conn = pymysql.connect(host=host, port=port, user=user, db=db) # TODO find out how to combine init with enter
         return self
 
@@ -41,7 +41,7 @@ class Ensembl:
         FROM gene g JOIN xref x ON x.xref_id = g.display_xref_id
         join seq_region USING (seq_region_id)
         join object_xref ox on ox.ensembl_id = g.gene_id and ensembl_object_type = 'Gene'
-        join xref xx on xx.xref_id = ox.xref_id and xx.external_db_id in (1510, 1520)
+        join xref xx on xx.xref_id = ox.xref_id and xx.external_db_id = 1510
         """
         keys_conds = {
             'OMIM_morbid': 'xx.dbprimary_acc',
@@ -57,8 +57,8 @@ class Ensembl:
                        #if key in line and line[key] != None and len(line[key]) > 0]
 
         # check on length of the region name to exclude scaffolds and patches
-        query = "%s where length(seq_region.name) < 3 and %s" % \
-                (base_query, " and ".join(conds))
+        query = "%s where length(seq_region.name) < 3 and g.status = 'KNOWN' and g.biotype = 'protein_coding' and %s" % \
+                 (base_query, " and ".join(conds))
 
         # execute the query
         cur = self.conn.cursor(pymysql.cursors.DictCursor)
@@ -107,7 +107,7 @@ class Ensembl:
                        #if key in line and line[key] != None and len(line[key]) > 0]
 
         # check on length of the region name to exclude scaffolds and patches
-        query = "%s where length(seq_region.name) < 3 and %s" % \
+        query = "%s where length(seq_region.name) < 3 and g.status = 'KNOWN' and g.biotype = 'protein_coding' and %s" % \
                 (base_query, " and ".join(conds))
 
         # execute the query
@@ -121,7 +121,7 @@ class Ensembl:
             for entry in rs:
                 yield entry
 
-    def query_transcripts_omim(self, omim_id=None):
+    def query_transcripts_omim(self, omim_id=None, gene_id=None):
         """Queries EnsEMBL for all transcripts.
 
         Args
@@ -219,10 +219,12 @@ class Ensembl:
 
         if omim_id:
             base_query += " AND xx.dbprimary_acc = %s"
+        if gene_id:
+            base_query += " AND g.stable_id = %s"
 
         base_query += " ORDER BY g.gene_id, t.transcript_id"
 
-        cur.execute(base_query, omim_id)
+        cur.execute(base_query, (omim_id, gene_id))
         rs = cur.fetchall()
         if len(rs) > 0:
             transcripts = _process_transcripts(rs)
