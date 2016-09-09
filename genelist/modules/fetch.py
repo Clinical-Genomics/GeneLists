@@ -199,6 +199,7 @@ class Fetch(object):
                 pass
         """
         if self.print_error:
+            line = '\033[31m [ERROR]\033[93m ' + line # add some color
             self.logger.error(line, extra={'line_nr': self.line_nr, 'hgnc_id': self.current_hgnc_id})
 
     def get_context(self, data):
@@ -392,27 +393,36 @@ class Fetch(object):
 
         """
         for line in data:
-            omim = there(line, 'OMIM_morbid')
-            hgnc = there(line, 'HGNC_symbol')
-            ensembl = there(line, 'Ensembl_gene_id')
+            omim_morbid = there(line, 'OMIM_morbid')
+            hgnc_symbol = there(line, 'HGNC_symbol')
+            #ensembl_gene_id = there(line, 'Ensembl_gene_id')
+            func_name = sys._getframe().f_code.co_name
 
-            if omim:
+            if omim_morbid:
+                hgnc_symbol = self.mim2gene.get_hgnc(omim_morbid)
+                if not hgnc_symbol:
+                    self.error('[{}] HGNC_symbol NOT FOUND!'.format(func_name))
+
                 yield self.merge_line(
                     {
-                        'HGNC_symbol': self.mim2gene.get_hgnc(omim),
+                        'HGNC_symbol': hgnc_symbol,
                         #'Ensembl_gene_id': self.mim2gene.get_ensembl(omim)
                     },
-                    line
+                    line,
                 )
                 continue
 
-            if hgnc:
+            if hgnc_symbol:
+                omim_morbid = self.mim2gene.get_omim(hgnc_symbol)
+                if not omim_morbid:
+                    self.error('[{}] OMIM_morbid not found!'.format(func_name))
+
                 yield self.merge_line(
                     {
-                        'OMIM_morbid': self.mim2gene.get_omim(hgnc),
+                        'OMIM_morbid': omim_morbid,
                         #'Ensembl_gene_id': self.mim2gene.get_ensembl(hgnc)
                     },
-                    line
+                    line,
                 )
                 continue
 
