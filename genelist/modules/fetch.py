@@ -269,6 +269,8 @@ class Fetch(object):
                 if isinstance(value, str):
                     if line[key] == '#NA':
                         line[key] = ''
+                    if line[key] == 'NA':
+                        line[key] = ''
                     else:
                         line[key] = re.sub(r'\s*[,;]\s*', ',', value.strip()) # rm whitespace
                         line[key] = re.sub(r',+', ',', line[key]) # collapse commas
@@ -317,11 +319,11 @@ class Fetch(object):
                 # skip if no new value
                 continue
             else:
+                caller = sys._getframe(1).f_code.co_name
                 if str(line[key]) != str(value):
                     # don't report HGNC mismatches if multiple given
                     #if key == 'HGNC_symbol' and line[key] in client['HGNC_symbols']:
                     #    continue
-                    caller = sys._getframe(1).f_code.co_name
                     self.warn("[{}] {}: line '{}' differs from client '{}'".\
                               format(caller, key, line[key], value), key)
 
@@ -426,21 +428,27 @@ class Fetch(object):
         with Ensembl() as ensembldb:
             for line in data:
                 omim_morbid = there(line, 'OMIM_morbid')
+                hgnc_symbol = there(line, 'HGNC_symbol')
                 if omim_morbid:
-                    ensembl_lines = ensembldb.query_omim(omim_morbid)
+                    # first try with omim morbid
+                    ensembl_lines = ensembldb.query(omim_morbid=omim_morbid)
+                    if not ensembl_lines:
+                        # then with the HGNC symbol
+                        ensembl_lines = ensembldb.query(hgnc_symbol=hgnc_symbol)
+                        if ensembl_lines:
+                            func_name = sys._getframe().f_code.co_name
+                            self.warn('[{}] Found E! with HGNC symbol instead of OMIM_morbid {}'.format(func_name, omim_morbid))
+
                     if ensembl_lines:
-                        warn = self.print_warn
                         if len(ensembl_lines) > 1:
                             e_ids = [entry['Ensembl_gene_id'] for entry in ensembl_lines]
-                            self.info('Multiple E! entries: {}. Skip warnings.'.format(e_ids))
-
                             ensembl_gene_id = there(line, 'Ensembl_gene_id')
                             if ensembl_gene_id in e_ids:
-                                self.print_warn = False
+                                self.info('Multiple E! entries: {}.'.format(e_ids))
                         for ensembl_line in ensembl_lines:
                             yield self.merge_line(ensembl_line, line)
-                        self.print_warn = warn
                     else:
+                        self.error('{}: No E! entries!'.format(omim_morbid))
                         yield line
                 else:
                     yield line
@@ -459,10 +467,19 @@ class Fetch(object):
         with Ensembl() as ensembldb:
             for line in data:
                 omim_morbid = there(line, 'OMIM_morbid')
-                if omim_morbid:
-                    transcripts = ensembldb.query_transcripts_omim(omim_morbid)
-                    if transcripts is not None:
+                ensembl_gene_id = there(line, 'Ensembl_gene_id')
+                if omim_morbid and ensembl_gene_id:
+                    transcripts = ensembldb.query_transcripts_omim(omim_morbid=omim_morbid, ensembl_gene_id=ensembl_gene_id)
+                    if not transcripts:
+                        transcripts = ensembldb.query_transcripts_omim(ensembl_gene_id=ensembl_gene_id)
+                        if transcripts:
+                            func_name = sys._getframe().f_code.co_name
+                            self.warn('[{}] Found E! transcripts with ensembl_gene_id instead of OMIM_morbid'.format(func_name, omim_morbid))
+
+                    if transcripts:
                         line = self.merge_line(transcripts, line)
+                    else:
+                        self.warn('No transcripts on E!')
                 yield line
 
     def add_uniprot(self, data):
@@ -580,7 +597,7 @@ class Fetch(object):
 
     def fill_alias(self, data):
         """If the starting HGNC ends up beign different than the endin HGNC symbol,
-        add it to the alias column. Chck if the gene symbol isn't already present in the 
+        add it to the alias column. Chck if the gene symbol isn't already present in the
         alias list.
         """
         for line in data:
@@ -620,12 +637,12 @@ class Fetch(object):
         """ Set up logging """
         root_logger = logging.getLogger(__name__) # only log this package
         root_logger.setLevel(level)
-        
+
         # customize formatter, align each column
         template = "#%(line_nr)s [%(hgnc_id)s] %(message)s"
         formatter = logging.Formatter(template)
         fancy_formatter = logging.Formatter('\033[93m' + template + '\033[0m')
-        
+
         # add a basic STDERR handler to the logger
         console = logging.StreamHandler()
         console.setLevel(level)
