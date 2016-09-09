@@ -543,6 +543,8 @@ class Fetch(object):
             elif 'HGNC_symbol' in line and 'Chromosome' in line:
                 entry = omim.gene(hgnc_symbol=line['HGNC_symbol'])
             else:
+                func_name = sys._getframe().f_code.co_name
+                self.warn('[{}] No entry in OMIM!')
                 yield line
                 continue
 
@@ -561,25 +563,17 @@ class Fetch(object):
                         omim_number,
                         inheritance_models_str))
 
-            if len(line_phenotypic_disease_models) > 0:
-                line['Phenotypic_disease_model'] = '|'.join(line_phenotypic_disease_models)
-            else:
-                line['Phenotypic_disease_model'] = ''
-            # add OMIM morbid
-            if entry['mim_number'] is not None:
-                if omim_morbid and str(omim_morbid) != str(entry['mim_number']):
-                    self.warn('{} > {} client OMIM number differs from OMIM query' % \
-                           (omim_morbid, entry['mim_number']), 'OMIM_morbid')
-                line['OMIM_morbid'] = entry['mim_number']
+            new_line = {}
 
-            # add Gene_locus
-            if entry['gene_location'] is not None:
-                if there(line, 'Gene_locus') and \
-                   line['Gene_locus'] != entry['gene_location']:
-                    self.warn('{} > {} client Gene locus differs from OMIM query'.
-                           format(line['Gene_locus'], entry['gene_location']), 'Gene_locus')
-                line['Gene_locus'] = entry['gene_location']
-            yield line
+            if len(line_phenotypic_disease_models) > 0:
+                new_line['Phenotypic_disease_model'] = '|'.join(line_phenotypic_disease_models)
+            else:
+                new_line['Phenotypic_disease_model'] = ''
+
+            new_line['OMIM_morbid'] = entry['mim_number']
+            new_line['Gene_locus'] = entry['gene_location']
+
+            yield self.merge_line(new_line, line)
 
     def redpen2symbol(self, data):
         """If reduced penetrance is set, replace it with the HGNC symbol
