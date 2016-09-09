@@ -61,6 +61,12 @@ class Fetch(object):
 
         # check mem2gene.txt for HGNC symbol resolution
         self.mim2gene = self.init_mim2gene(download_mim2gene)
+        self.ensembldb = Ensembl(
+            host=self.config['ensembl']['host'],
+            port=self.config['ensembl']['port'],
+            user=self.config['ensembl']['user'],
+            db=self.config['ensembl']['db']
+        )
 
         self.reset()
 
@@ -425,33 +431,32 @@ class Fetch(object):
             dict: with the Gene_start, Gene_stop, Chromome and HGNC_symbol filled in.
 
         """
-        with Ensembl() as ensembldb:
-            for line in data:
-                omim_morbid = there(line, 'OMIM_morbid')
-                hgnc_symbol = there(line, 'HGNC_symbol')
-                if omim_morbid:
-                    # first try with omim morbid
-                    ensembl_lines = ensembldb.query(omim_morbid=omim_morbid)
-                    if not ensembl_lines:
-                        # then with the HGNC symbol
-                        ensembl_lines = ensembldb.query(hgnc_symbol=hgnc_symbol)
-                        if ensembl_lines:
-                            func_name = sys._getframe().f_code.co_name
-                            self.warn('[{}] Found E! with HGNC symbol instead of OMIM_morbid {}'.format(func_name, omim_morbid))
-
+        for line in data:
+            omim_morbid = there(line, 'OMIM_morbid')
+            hgnc_symbol = there(line, 'HGNC_symbol')
+            if omim_morbid:
+                # first try with omim morbid
+                ensembl_lines = self.ensembldb.query(omim_morbid=omim_morbid)
+                if not ensembl_lines:
+                    # then with the HGNC symbol
+                    ensembl_lines = self.ensembldb.query(hgnc_symbol=hgnc_symbol)
                     if ensembl_lines:
-                        if len(ensembl_lines) > 1:
-                            e_ids = [entry['Ensembl_gene_id'] for entry in ensembl_lines]
-                            ensembl_gene_id = there(line, 'Ensembl_gene_id')
-                            if ensembl_gene_id in e_ids:
-                                self.info('Multiple E! entries: {}.'.format(e_ids))
-                        for ensembl_line in ensembl_lines:
-                            yield self.merge_line(ensembl_line, line)
-                    else:
-                        self.error('{}: No E! entries!'.format(omim_morbid))
-                        yield line
+                        func_name = sys._getframe().f_code.co_name
+                        self.warn('[{}] Found E! with HGNC symbol instead of OMIM_morbid {}'.format(func_name, omim_morbid))
+
+                if ensembl_lines:
+                    if len(ensembl_lines) > 1:
+                        e_ids = [entry['Ensembl_gene_id'] for entry in ensembl_lines]
+                        ensembl_gene_id = there(line, 'Ensembl_gene_id')
+                        if ensembl_gene_id in e_ids:
+                            self.info('Multiple E! entries: {}.'.format(e_ids))
+                    for ensembl_line in ensembl_lines:
+                        yield self.merge_line(ensembl_line, line)
                 else:
+                    self.error('{}: No E! entries!'.format(omim_morbid))
                     yield line
+            else:
+                yield line
 
     def query_transcripts(self, data):
         """Queries EnsEMBL for all transcripts.
@@ -464,23 +469,22 @@ class Fetch(object):
             a row with transcript data from ensEMBLdb filled in.
         """
 
-        with Ensembl() as ensembldb:
-            for line in data:
-                omim_morbid = there(line, 'OMIM_morbid')
-                ensembl_gene_id = there(line, 'Ensembl_gene_id')
-                if omim_morbid and ensembl_gene_id:
-                    transcripts = ensembldb.query_transcripts_omim(omim_morbid=omim_morbid, ensembl_gene_id=ensembl_gene_id)
-                    if not transcripts:
-                        transcripts = ensembldb.query_transcripts_omim(ensembl_gene_id=ensembl_gene_id)
-                        if transcripts:
-                            func_name = sys._getframe().f_code.co_name
-                            self.warn('[{}] Found E! transcripts with ensembl_gene_id instead of OMIM_morbid'.format(func_name, omim_morbid))
-
+        for line in data:
+            omim_morbid = there(line, 'OMIM_morbid')
+            ensembl_gene_id = there(line, 'Ensembl_gene_id')
+            if omim_morbid and ensembl_gene_id:
+                transcripts = self.ensembldb.query_transcripts_omim(omim_morbid=omim_morbid, ensembl_gene_id=ensembl_gene_id)
+                if not transcripts:
+                    transcripts = self.ensembldb.query_transcripts_omim(ensembl_gene_id=ensembl_gene_id)
                     if transcripts:
-                        line = self.merge_line(transcripts, line)
-                    else:
-                        self.warn('No transcripts on E!')
-                yield line
+                        func_name = sys._getframe().f_code.co_name
+                        self.warn('[{}] Found E! transcripts with ensembl_gene_id instead of OMIM_morbid'.format(func_name, omim_morbid))
+
+                if transcripts:
+                    line = self.merge_line(transcripts, line)
+                else:
+                    self.warn('No transcripts on E!')
+            yield line
 
     def add_uniprot(self, data):
         """ Add the UniProt ID and UniProt protein name based on the official HGNC symbol.
