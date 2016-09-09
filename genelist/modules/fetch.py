@@ -444,28 +444,30 @@ class Fetch(object):
         for line in data:
             omim_morbid = there(line, 'OMIM_morbid')
             hgnc_symbol = there(line, 'HGNC_symbol')
-            if omim_morbid:
-                # first try with omim morbid
-                ensembl_lines = self.ensembldb.query(omim_morbid=omim_morbid)
-                if not ensembl_lines:
-                    # then with the HGNC symbol
-                    ensembl_lines = self.ensembldb.query(hgnc_symbol=hgnc_symbol)
-                    if ensembl_lines:
-                        func_name = sys._getframe().f_code.co_name
-                        self.warn('[{}] Found E! with HGNC symbol instead of OMIM_morbid {}'.format(func_name, omim_morbid))
 
-                if ensembl_lines:
-                    if len(ensembl_lines) > 1:
-                        e_ids = [entry['Ensembl_gene_id'] for entry in ensembl_lines]
-                        ensembl_gene_id = there(line, 'Ensembl_gene_id')
-                        if ensembl_gene_id in e_ids:
-                            self.info('Multiple E! entries: {}.'.format(e_ids))
-                    for ensembl_line in ensembl_lines:
-                        yield self.merge_line(ensembl_line, line)
-                else:
-                    self.error('{}: No E! entries!'.format(omim_morbid))
-                    yield line
+            # first try with omim morbid
+            if not omim_morbid:
+                ensembl_lines = []
             else:
+                ensembl_lines = self.ensembldb.query(omim_morbid=omim_morbid)
+
+            if not ensembl_lines:
+                # then with the HGNC symbol
+                ensembl_lines = self.ensembldb.query(hgnc_symbol=hgnc_symbol)
+                if ensembl_lines:
+                    func_name = sys._getframe().f_code.co_name
+                    self.warn('[{}] Found E! with HGNC symbol instead of OMIM_morbid {}'.format(func_name, omim_morbid))
+
+            if ensembl_lines:
+                if len(ensembl_lines) > 1:
+                    e_ids = [entry['Ensembl_gene_id'] for entry in ensembl_lines]
+                    ensembl_gene_id = there(line, 'Ensembl_gene_id')
+                    if ensembl_gene_id in e_ids:
+                        self.info('Multiple E! entries: {}.'.format(e_ids))
+                for ensembl_line in ensembl_lines:
+                    yield self.merge_line(ensembl_line, line)
+            else:
+                self.error('{}: No E! entries!'.format(omim_morbid))
                 yield line
 
     def query_transcripts(self, data):
@@ -482,18 +484,19 @@ class Fetch(object):
         for line in data:
             omim_morbid = there(line, 'OMIM_morbid')
             ensembl_gene_id = there(line, 'Ensembl_gene_id')
-            if omim_morbid and ensembl_gene_id:
-                transcripts = self.ensembldb.query_transcripts_omim(omim_morbid=omim_morbid, ensembl_gene_id=ensembl_gene_id)
-                if not transcripts:
-                    transcripts = self.ensembldb.query_transcripts_omim(ensembl_gene_id=ensembl_gene_id)
-                    if transcripts:
-                        func_name = sys._getframe().f_code.co_name
-                        self.warn('[{}] Found E! transcripts with ensembl_gene_id instead of OMIM_morbid'.format(func_name, omim_morbid))
 
+            transcripts = self.ensembldb.query_transcripts_omim(omim_morbid=omim_morbid, ensembl_gene_id=ensembl_gene_id)
+            if not transcripts:
+                transcripts = self.ensembldb.query_transcripts_omim(ensembl_gene_id=ensembl_gene_id)
                 if transcripts:
-                    line = self.merge_line(transcripts, line)
-                else:
-                    self.warn('No transcripts on E!')
+                    func_name = sys._getframe().f_code.co_name
+                    self.warn('[{}] Found E! transcripts with ensembl_gene_id instead of OMIM_morbid'.format(func_name, omim_morbid))
+
+            if transcripts:
+                line = self.merge_line(transcripts, line)
+            else:
+                self.warn('No transcripts on E!')
+
             yield line
 
     def add_uniprot(self, data):

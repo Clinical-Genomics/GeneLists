@@ -33,12 +33,12 @@ def format_entry(json_entry):
 
   data = {
     'prefix': json_entry.get('prefix'),
-    'mim_number': json_entry.get('mimNumber'),
+    'mim_number': json_entry.get('mimNumber', False),
     'status': json_entry.get('status'),
     'other_entities': other_entities,
     'gene_symbol': gene_map.get('geneSymbols'),
     'gene_name': gene_map.get('geneName'),
-    'gene_location': gene_map.get('computedCytoLocation'),
+    'gene_location': gene_map.get('computedCytoLocation', False),
     'phenotypes': phenotypes,
   }
 
