@@ -146,6 +146,13 @@ class OMIM(object):
 
     return phenotypic_disease_model
 
+  def parse_phenotypic_descriptions(self, phenotypes, chromosome):
+      descriptions = {}
+      for phenotype in phenotypes:
+          descriptions[phenotype['phenotype_mim_number']] = phenotype['phenotype']
+
+      return descriptions
+
   def gene(self, hgnc_symbol=None, mim_number=None):
     entries = self.search_gene(hgnc_symbol=hgnc_symbol, mim_number=mim_number)
 
