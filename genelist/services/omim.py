@@ -146,9 +146,6 @@ class OMIM(object):
         'description': phenotype['phenotype']
       })
 
-    from pprint import pprint
-    pprint(phenotypic_disease_model)
-
     return phenotypic_disease_model
 
   def parse_phenotypic_disease_models(self, phenotypes, chromosome=''):
