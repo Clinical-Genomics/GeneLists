@@ -243,6 +243,10 @@ class Mans(object):
                 if any([x for x in cyto_location if x in ('q', 'p')]):
                     chromosome = re.compile('p|q').split(cyto_location)[0]
                     new_line['Chromosome'] = str(chromosome)
+                else:
+                    chromosome = re.sub(r'^Chr.', '', cyto_location)
+                    new_line['Chromosome'] = str(chromosome)
+
             yield self.merge_line(new_line, line)
 
     def get_phenotype_number(self, data):
@@ -293,7 +297,7 @@ class Mans(object):
             # extract the inheritance model
             phenotypic_disease_models = omim.\
                 parse_phenotypic_disease_models_ext(entry['phenotypes'],
-                                                    chromosome=line['Chromosome'])
+                                                    chromosome=line['Chromosome'],
                                                     phenotype_number=phenotype_number)
 
             line_phenotypic_disease_models = []

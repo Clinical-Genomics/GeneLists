@@ -58,7 +58,10 @@ def fetch(infile, outfile, remove_non_genes, warn, error, info, download_mim2gen
 @click.option('--config', '-c', required=True, type=click.File('r'),
               help='YAML config file.')
 def mans(infile, outfile, warn, error, info, report_empty, config):
-    """Fetch omim annotations."""
+    """Fetch omim annotations.
+    Rerquires following headers:
+    #Description\tGene Symbols\tomim_morbid\tCyto Location
+    """
 
     mans = Mans(config)
 
