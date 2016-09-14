@@ -86,6 +86,71 @@ class OMIM(object):
 
     return url, params
 
+  def parse_phenotypic_disease_models_ext(self, phenotypes, chromosome='', phenotype_number=False):
+    """Extract and clean up the inheritance models returned from an OMIM query.
+
+    Args:
+        phenotypes (list of dicts): each dict represents a phenotype. This is the 'phenotypes' key in the data returned from OMIM
+
+    Returns
+        dict of sorted list: { phenotype_mim_number: [ inheritance_model, inheritance_model, ...] }
+
+    """
+    TERMS_MAPPER = {
+      'Autosomal recessive': 'AR',
+      'Autosomal dominant': 'AD',
+      'X-linked dominant': 'XD',
+      'X-linked recessive': 'XR',
+    }
+
+    TERMS_X = [
+      'X-linked dominant',
+      'X-linked recessive'
+    ]
+
+    TERMS_AUTOSOMAL = [
+      'Autosomal recessive',
+      'Autosomal dominant'
+    ]
+
+    TERMS_BLACKLIST = [
+      'Isolated cases',
+      'Mitochondrial'
+    ]
+
+    phenotypic_disease_model = {}
+    for phenotype in phenotypes:
+
+      # only use certain phenotype number
+      if phenotype_number and str(phenotype_number) != str(phenotype['phenotype_mim_number']):
+          continue
+
+      models = set()
+      if phenotype['phenotype_mim_number'] not in phenotypic_disease_model:
+        phenotypic_disease_model[ phenotype['phenotype_mim_number'] ] = []
+
+      if phenotype['inheritance'] is not None:
+        for model in phenotype['inheritance'].split(';'):
+          model = model.strip(' ')
+
+          # add a model
+          models.update([ model ])
+
+        models = models.difference(TERMS_BLACKLIST) # remove blacklisted terms
+        # remove models that don't belong on this chromosome
+        models = models.difference(TERMS_AUTOSOMAL) if chromosome.upper() == 'X' else models.difference(TERMS_X)
+        models = set([TERMS_MAPPER.get(model_human, model_human) for model_human in models]) # rename them if possible
+
+      phenotypic_disease_model[ phenotype['phenotype_mim_number'] ].append({
+        'models': sorted(list(models)) if len(models) else [],
+        'description': phenotype['phenotype']
+      })
+
+    from pprint import pprint
+    pprint(phenotypic_disease_model)
+
+    return phenotypic_disease_model
+
   def parse_phenotypic_disease_models(self, phenotypes, chromosome=''):
     """Extract and clean up the inheritance models returned from an OMIM query.
 

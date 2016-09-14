@@ -30,9 +30,8 @@ def there(line, key):
 
     return line[key]
 
-class Omim(object):
-
-    """Provide all annotation functionality in one class. """
+class Mans(object):
+    """Provide omim annotation functionality in one class. """
 
     def __init__(self, config):
         self.header = ['omim_morbid', 'omim_phenotype', 'description', 'inheritance_models']
@@ -237,7 +236,6 @@ class Omim(object):
                 yield line
 
     def get_chromosome(self, data):
-
         for line in data:
             cyto_location = there(line, 'Cyto Location')
             new_line = {}
@@ -245,6 +243,19 @@ class Omim(object):
                 if any([x for x in cyto_location if x in ('q', 'p')]):
                     chromosome = re.compile('p|q').split(cyto_location)[0]
                     new_line['Chromosome'] = str(chromosome)
+            yield self.merge_line(new_line, line)
+
+    def get_phenotype_number(self, data):
+        for line in data:
+            new_line = {}
+            description = there(line, 'Description')
+
+            if description:
+                p = re.compile('.*, (\d+).*')
+                m = p.search(description)
+                if m:
+                    new_line['phenotype_number'] = m.group(1)
+
             yield self.merge_line(new_line, line)
 
     def query_omim(self, data):
@@ -260,6 +271,7 @@ class Omim(object):
         for line in data:
             omim_morbid = there(line, 'omim_morbid')
             chromosome = there(line, 'Chromosome')
+            phenotype_number = there(line, 'phenotype_number')
 
             if omim_morbid and 'Chromosome' in line:
                 entry = omim.gene(mim_number=omim_morbid)
@@ -280,21 +292,19 @@ class Omim(object):
 
             # extract the inheritance model
             phenotypic_disease_models = omim.\
-                parse_phenotypic_disease_models(entry['phenotypes'], line['Chromosome'])
-
-            # extract the description
-            phenotypic_descriptions = omim.\
-                parse_phenotypic_descriptions(entry['phenotypes'], line['Chromosome'])
+                parse_phenotypic_disease_models_ext(entry['phenotypes'],
+                                                    chromosome=line['Chromosome'])
+                                                    phenotype_number=phenotype_number)
 
             line_phenotypic_disease_models = []
             # if any inheritance models and omim numbers are present, use them!
-            for omim_number, inheritance_models in phenotypic_disease_models.items():
+            for omim_number, models_descriptions in phenotypic_disease_models.items():
                 if omim_number is not None:
-                    if inheritance_models is not None:
-                        new_line['inheritance_models'] = ','.join(inheritance_models)
+                    for models_description in models_descriptions:
+                        new_line['inheritance_models'] = ','.join(models_description['models'])
                         new_line['omim_phenotype'] = omim_number
-                        new_line['description'] = phenotypic_descriptions[omim_number]
-                    yield self.merge_line(new_line, line)
+                        new_line['description'] = models_description['description']
+                        yield self.merge_line(new_line, line)
 
     def fill(self, data):
         """ Removes #NA's and fills in '' for missing values.
@@ -383,8 +393,11 @@ class Omim(object):
         # fill in the chromosome
         chromosome_data = self.get_chromosome(context_data)
 
+        # fill in the phenotype number
+        phenotype_data = self.get_phenotype_number(chromosome_data)
+
         # fill in the inheritance models, chromosome
-        omim_data = self.query_omim(chromosome_data)
+        omim_data = self.query_omim(phenotype_data)
 
         # fill in missing values with ''
         completed_data = self.fill(omim_data)
@@ -401,8 +414,6 @@ class Omim(object):
                 yield line
 
         # print the gene list
-        for line in self.get_contigs():
-            yield line
         yield self.get_header()
         for line in print_data:
             yield self.format_line(line)

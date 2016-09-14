@@ -5,7 +5,7 @@ import logging
 import click
 
 from .modules.fetch import Fetch
-from .modules.omim import Omim as omim_fetch
+from .modules.mans import Mans
 from .modules.sanity import Sanity
 from .modules.panels import get_panels
 from .modules.merge import merge_panels
@@ -57,12 +57,12 @@ def fetch(infile, outfile, remove_non_genes, warn, error, info, download_mim2gen
               help='Report warnings from empty fields.')
 @click.option('--config', '-c', required=True, type=click.File('r'),
               help='YAML config file.')
-def omim(infile, outfile, warn, error, info, report_empty, config):
-    """Fetch all annotations."""
+def mans(infile, outfile, warn, error, info, report_empty, config):
+    """Fetch omim annotations."""
 
-    omim = omim_fetch(config)
+    mans = Mans(config)
 
-    for line in omim.annotate(lines=infile, info=info, error=error, warn=warn, report_empty=report_empty):
+    for line in mans.annotate(lines=infile, info=info, error=error, warn=warn, report_empty=report_empty):
         outfile.write(line + '\n')
 
 @run.command()
