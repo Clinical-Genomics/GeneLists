@@ -37,7 +37,8 @@ class Sanity(object):
         self.forbidden_chars = {
             # Can't have empty inheritance models:
             # Forbidden: SYMBOL:>, SYMBOL:OMIM||, SYMBOL:OMIM>, SYMBOL:OMIM>AR|>
-            'Phenotypic_disease_model': re.compile(r'(:>|>$|:\d+>\||\|>)')
+            'Phenotypic_disease_model': re.compile(r'(:>|>$|:\d+>\||\|>)'),
+            'OMIM_morbid': re.compile(r'(False|.*:False)')
         }
 
         self.line_nr = 0 # hold on to the line nr
