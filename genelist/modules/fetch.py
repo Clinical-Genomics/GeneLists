@@ -59,6 +59,8 @@ class Fetch(object):
         self.logger = logging.getLogger(__name__)
         self.setup_logging(level='DEBUG')
 
+        self.reset()
+
         # check mem2gene.txt for HGNC symbol resolution
         self.mim2gene = self.init_mim2gene(download_mim2gene)
         self.ensembldb = Ensembl(
@@ -67,8 +69,6 @@ class Fetch(object):
             user=self.config['ensembl']['user'],
             db=self.config['ensembl']['db']
         )
-
-        self.reset()
 
     def reset(self):
         """ Reset state for a next genelist to annotate """
@@ -395,6 +395,7 @@ class Fetch(object):
         for line in data:
             omim_morbid = there(line, 'OMIM_morbid')
             hgnc_symbol = there(line, 'HGNC_symbol')
+
             #ensembl_gene_id = there(line, 'Ensembl_gene_id')
             func_name = sys._getframe().f_code.co_name
 
@@ -402,28 +403,30 @@ class Fetch(object):
                 hgnc_symbol = self.mim2gene.get_hgnc(omim_morbid)
                 if not hgnc_symbol:
                     self.error('[{}] HGNC_symbol NOT FOUND!'.format(func_name))
-
-                yield self.merge_line(
-                    {
-                        'HGNC_symbol': hgnc_symbol,
-                        #'Ensembl_gene_id': self.mim2gene.get_ensembl(omim)
-                    },
-                    line,
-                )
+                    yield line
+                else:
+                    yield self.merge_line(
+                        {
+                            'HGNC_symbol': hgnc_symbol,
+                            #'Ensembl_gene_id': self.mim2gene.get_ensembl(omim)
+                        },
+                        line,
+                    )
                 continue
 
             if hgnc_symbol:
                 omim_morbid = self.mim2gene.get_omim(hgnc_symbol)
                 if not omim_morbid:
                     self.error('[{}] OMIM_morbid not found!'.format(func_name))
-
-                yield self.merge_line(
-                    {
-                        'OMIM_morbid': omim_morbid,
-                        #'Ensembl_gene_id': self.mim2gene.get_ensembl(hgnc)
-                    },
-                    line,
-                )
+                    yield line
+                else:
+                    yield self.merge_line(
+                        {
+                            'OMIM_morbid': omim_morbid,
+                            #'Ensembl_gene_id': self.mim2gene.get_ensembl(hgnc)
+                        },
+                        line,
+                    )
                 continue
 
             # let's skip EnsEMBL checking for now
@@ -438,25 +441,29 @@ class Fetch(object):
             data (list of dicts): Inner dict represents a row in a gene list
 
         Yields:
-            dict: with the Gene_start, Gene_stop, Chromome and HGNC_symbol filled in.
+            dict: with the Gene_start, Gene_stop, Chromosome and HGNC_symbol filled in.
 
         """
         for line in data:
             omim_morbid = there(line, 'OMIM_morbid')
             hgnc_symbol = there(line, 'HGNC_symbol')
+            chromosome = there(line, 'Chromosome')
 
-            # first try with omim morbid
-            if not omim_morbid:
-                ensembl_lines = []
-            else:
-                ensembl_lines = self.ensembldb.query(omim_morbid=omim_morbid)
+            # Skip to using the HGNC symbol when no OMIM morbid
+            ensembl_lines = []
+            if omim_morbid:
+                ensembl_lines = self.ensembldb.query(omim_morbid=omim_morbid, chromosome=chromosome)
 
-            if not ensembl_lines:
-                # then with the HGNC symbol
-                ensembl_lines = self.ensembldb.query(hgnc_symbol=hgnc_symbol)
+            # multiple hits? WTF. Check with the hgnc symbol and omim morbid
+            if len(ensembl_lines) > 1:
+                ensembl_lines = self.ensembldb.query(hgnc_symbol=hgnc_symbol, omim_morbid=omim_morbid, chromosome=chromosome)
+
+            if not ensembl_lines and hgnc_symbol:
+                # then with the HGNC symbol only
+                ensembl_lines = self.ensembldb.query(hgnc_symbol=hgnc_symbol, chromosome=chromosome)
                 if ensembl_lines:
                     func_name = sys._getframe().f_code.co_name
-                    self.warn('[{}] Found E! with HGNC symbol instead of OMIM_morbid {}'.format(func_name, omim_morbid))
+                    self.info('[{}] Found E! with HGNC symbol instead of OMIM_morbid {}'.format(func_name, omim_morbid))
 
             if ensembl_lines:
                 if len(ensembl_lines) > 1:
@@ -485,12 +492,16 @@ class Fetch(object):
             omim_morbid = there(line, 'OMIM_morbid')
             ensembl_gene_id = there(line, 'Ensembl_gene_id')
 
-            transcripts = self.ensembldb.query_transcripts_omim(omim_morbid=omim_morbid, ensembl_gene_id=ensembl_gene_id)
-            if not transcripts:
+            transcripts = []
+            if omim_morbid and ensembl_gene_id:
+                transcripts = self.ensembldb.query_transcripts_omim(omim_morbid=omim_morbid, ensembl_gene_id=ensembl_gene_id)
+                self.info('Found transcripts with {} {}'.format(omim_morbid, ensembl_gene_id))
+            elif ensembl_gene_id:
                 transcripts = self.ensembldb.query_transcripts_omim(ensembl_gene_id=ensembl_gene_id)
+
                 if transcripts:
                     func_name = sys._getframe().f_code.co_name
-                    self.warn('[{}] Found E! transcripts with ensembl_gene_id instead of OMIM_morbid'.format(func_name, omim_morbid))
+                    self.info('[{}] Found E! transcripts with ensembl_gene_id instead of OMIM_morbid'.format(func_name, omim_morbid))
 
             if transcripts:
                 line = self.merge_line(transcripts, line)
@@ -589,6 +600,10 @@ class Fetch(object):
 
             new_line['OMIM_morbid'] = entry['mim_number']
             new_line['Gene_locus'] = entry['gene_location']
+            if entry['gene_location']:
+                if any([x for x in entry['gene_location'] if x in ('q', 'p')]):
+                    chromosome = re.compile('p|q').split(entry['gene_location'])[0]
+                    new_line['Chromosome'] = str(chromosome)
 
             yield self.merge_line(new_line, line)
 
@@ -730,8 +745,11 @@ class Fetch(object):
         # all from mim2gene, the magical file
         mim2gene_data = self.fill_from_mim2gene(hgnc_data)
 
+        # fill in the inheritance models, chromosome
+        omim_data = self.query_omim(mim2gene_data)
+
         # fill in info from ensembl
-        ensembl_data = self.fill_from_ensembl(mim2gene_data)
+        ensembl_data = self.fill_from_ensembl(omim_data)
 
         # aggregate transcripts
         transcript_data = self.query_transcripts(ensembl_data)
@@ -742,11 +760,8 @@ class Fetch(object):
         ## add refseq
         refseq_data = self.add_refseq(uniprot_data)
 
-        ## fill in the inheritance models
-        omim_data = self.query_omim(refseq_data)
-
         ## do some replacements
-        redpen_data = self.redpen2symbol(omim_data)
+        redpen_data = self.redpen2symbol(refseq_data)
 
         # fill in missing values with ''
         completed_data = self.fill(redpen_data)

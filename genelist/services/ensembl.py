@@ -17,7 +17,7 @@ class Ensembl:
     def __exit__(self, type, value, traceback):
         self.conn.close()
 
-    def query(self, omim_morbid=None, ensembl_gene_id=None, hgnc_symbol=None):
+    def query(self, omim_morbid=None, ensembl_gene_id=None, hgnc_symbol=None, chromosome=None):
         """Queries EnsEMBL based on the Ensembl_gene_id. Data from EnsEMBLdb will overwrite
         the client data.
         An identifiers should yield one result from EnsEMBLdb.
@@ -50,13 +50,16 @@ class Ensembl:
         cond_values = []
         if omim_morbid:
             base_query += " AND xx.dbprimary_acc = %s"
-            cond_values.append(omim_morbid)
+            cond_values.append(str(omim_morbid))
         if ensembl_gene_id:
             base_query += " AND g.stable_id = %s"
             cond_values.append(ensembl_gene_id)
         if hgnc_symbol:
             base_query += " AND x.display_label = %s"
             cond_values.append(hgnc_symbol)
+        if chromosome:
+            base_query += " AND seq_region.name = %s"
+            cond_values.append(chromosome)
 
         # execute the query
         cur = self.conn.cursor(pymysql.cursors.DictCursor)
@@ -64,7 +67,7 @@ class Ensembl:
         rs = cur.fetchall() # result set
 
         if len(rs) == 0:
-            return False
+            return []
         else:
             return rs
 
@@ -79,7 +82,6 @@ class Ensembl:
                   HGNC_symbol:ensembl_transcript_id>ref_seq_id/ref_seq_id|
 
         """
-        cur = self.conn.cursor(pymysql.cursors.DictCursor)
 
         def _join_refseqs(transcripts):
             transcripts_refseqs = []
@@ -167,13 +169,14 @@ class Ensembl:
         cond_values = []
         if omim_morbid:
             base_query += " AND xx.dbprimary_acc = %s"
-            cond_values.append(omim_morbid)
+            cond_values.append(str(omim_morbid))
         if ensembl_gene_id:
             base_query += " AND g.stable_id = %s"
             cond_values.append(ensembl_gene_id)
-
+            
         base_query += " ORDER BY g.gene_id, t.transcript_id"
 
+        cur = self.conn.cursor(pymysql.cursors.DictCursor)
         cur.execute(base_query, cond_values)
         rs = cur.fetchall()
         if len(rs) > 0:
