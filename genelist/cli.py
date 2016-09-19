@@ -12,7 +12,7 @@ from .modules.merge import merge_panels
 
 #logger = logging.getLogger(__name__)
 
-__version__ = '3.3.2'
+__version__ = '3.3.3'
 
 @click.group()
 def run():
@@ -32,7 +32,7 @@ def run():
               help='Be more verbose.')
 @click.option('--report-empty', is_flag=True, default=False, show_default=True,
               help='Report warnings from empty fields.')
-@click.option('--download_mim2gene', is_flag=True, default=False, show_default=True,
+@click.option('--download-mim2gene', is_flag=True, default=False, show_default=True,
               help='Will download a new version of mim2gene.txt, used to check the OMIM type.')
 @click.option('--config', '-c', required=True, type=click.File('r'),
               help='YAML config file.')
