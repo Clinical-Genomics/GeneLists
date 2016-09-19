@@ -488,6 +488,7 @@ class Fetch(object):
             a row with transcript data from ensEMBLdb filled in.
         """
 
+        func_name = sys._getframe().f_code.co_name
         for line in data:
             omim_morbid = there(line, 'OMIM_morbid')
             ensembl_gene_id = there(line, 'Ensembl_gene_id')
@@ -495,18 +496,18 @@ class Fetch(object):
             transcripts = []
             if omim_morbid and ensembl_gene_id:
                 transcripts = self.ensembldb.query_transcripts_omim(omim_morbid=omim_morbid, ensembl_gene_id=ensembl_gene_id)
-                self.info('Found transcripts with {} {}'.format(omim_morbid, ensembl_gene_id))
-            elif ensembl_gene_id:
+                if transcripts:
+                    self.info('[{}] Found transcripts with {} {}'.format(func_name, omim_morbid, ensembl_gene_id))
+            if not transcripts and ensembl_gene_id:
                 transcripts = self.ensembldb.query_transcripts_omim(ensembl_gene_id=ensembl_gene_id)
 
                 if transcripts:
-                    func_name = sys._getframe().f_code.co_name
                     self.info('[{}] Found E! transcripts with ensembl_gene_id instead of OMIM_morbid'.format(func_name, omim_morbid))
 
             if transcripts:
                 line = self.merge_line(transcripts, line)
             else:
-                self.warn('No transcripts on E!')
+                self.warn('[{}] No transcripts on E!'.format(func_name))
 
             yield line
 

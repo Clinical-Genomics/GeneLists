@@ -41,10 +41,8 @@ class Ensembl:
         FROM gene g JOIN xref x ON x.xref_id = g.display_xref_id
         join seq_region USING (seq_region_id)
         LEFT join object_xref ox on ox.ensembl_id = g.gene_id and ensembl_object_type = 'Gene'
-        LEFT join xref xx on xx.xref_id = ox.xref_id and xx.external_db_id = 1510
+        LEFT join xref xx on xx.xref_id = ox.xref_id and xx.external_db_id IN (1500, 1510, 1520)
         where length(seq_region.name) < 3
-        and g.status = 'KNOWN'
-        and g.biotype = 'protein_coding'
         """
 
         cond_values = []
