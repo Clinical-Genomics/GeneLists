@@ -444,10 +444,12 @@ class Fetch(object):
             dict: with the Gene_start, Gene_stop, Chromosome and HGNC_symbol filled in.
 
         """
+        func_name = sys._getframe().f_code.co_name
         for line in data:
             omim_morbid = there(line, 'OMIM_morbid')
             hgnc_symbol = there(line, 'HGNC_symbol')
             chromosome = there(line, 'Chromosome')
+            ensembl_gene_id = there(line, 'Ensembl_gene_id')
 
             # Skip to using the HGNC symbol when no OMIM morbid
             ensembl_lines = []
@@ -457,24 +459,28 @@ class Fetch(object):
             # multiple hits? WTF. Check with the hgnc symbol and omim morbid
             if len(ensembl_lines) > 1:
                 ensembl_lines = self.ensembldb.query(hgnc_symbol=hgnc_symbol, omim_morbid=omim_morbid, chromosome=chromosome)
+                self.info('[{}] Found E! with {} {} {}'.format(func_name, omim_morbid, hgnc_symbol, chromosome))
 
             if not ensembl_lines and hgnc_symbol:
                 # then with the HGNC symbol only
                 ensembl_lines = self.ensembldb.query(hgnc_symbol=hgnc_symbol, chromosome=chromosome)
                 if ensembl_lines:
-                    func_name = sys._getframe().f_code.co_name
                     self.info('[{}] Found E! with HGNC symbol instead of OMIM_morbid {}'.format(func_name, omim_morbid))
+
+            if not ensembl_lines:
+                ensembl_lines = self.ensembldb.query(ensembl_gene_id=ensembl_gene_id, chromosome=chromosome)
+                if ensembl_lines:
+                    self.info('[{}] Found E! with {} {}'.format(func_name, ensembl_gene_id, chromosome))
 
             if ensembl_lines:
                 if len(ensembl_lines) > 1:
                     e_ids = [entry['Ensembl_gene_id'] for entry in ensembl_lines]
-                    ensembl_gene_id = there(line, 'Ensembl_gene_id')
                     if ensembl_gene_id in e_ids:
-                        self.info('Multiple E! entries: {}.'.format(e_ids))
+                        self.info('[{}] Multiple E! entries: {}.'.format(func_name, e_ids))
                 for ensembl_line in ensembl_lines:
                     yield self.merge_line(ensembl_line, line)
             else:
-                self.error('{}: No E! entries!'.format(omim_morbid))
+                self.error('[{}] {}: No E! entries!'.format(func_name, omim_morbid))
                 yield line
 
     def query_transcripts(self, data):
