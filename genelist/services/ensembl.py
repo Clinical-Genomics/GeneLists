@@ -180,4 +180,4 @@ class Ensembl:
         if len(rs) > 0:
             transcripts = _process_transcripts(rs)
             return next(transcripts)
-        return None
+        return {}
