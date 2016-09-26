@@ -595,7 +595,7 @@ class Fetch(object):
                 entry = omim.gene(hgnc_symbol=line['HGNC_symbol'])
             else:
                 func_name = sys._getframe().f_code.co_name
-                self.warn('[{}] No entry in OMIM!')
+                self.warn('[{}] No entry in OMIM!'.format(func_name))
                 yield line
                 continue
 
