@@ -59,8 +59,8 @@ BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD
 cd $OLD_WD
 
 # say something
-#read -p "Commit message: " MSG
-MSG="Update $GENELIST_NAME with OMIM"
+read -p "Commit message: " MSG
+#MSG="Update $GENELIST_NAME with OMIM"
 
 cd "$(dirname $GENELIST)"
 
