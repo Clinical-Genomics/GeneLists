@@ -27,7 +27,7 @@ GENELIST_SHORTNAME=${GENELIST_SHORTNAME#*-} # remove cust???-
 cd $GL_PATH
 # first find a tag of this list, if any
 set +e
-FULL_TAG=$(git describe --abbrev=0 --match "*${GENELIST_SHORTNAME}*" 2> /dev/null)
+FULL_TAG=$(git tag --sort version:refname -l "${GENELIST_SHORTNAME}*" 2> /dev/null)
 if [[ $? -ne 0 ]]; then # on fail, get the last tag
     TAG=$(git tag --sort version:refname | grep '^[0-9]\+\.[0-9]\+$' | tail -1 2> /dev/null)
     if [[ $? -ne 0 ]]; then
@@ -36,6 +36,7 @@ if [[ $? -ne 0 ]]; then # on fail, get the last tag
 else
     IFS=- read -a TAG_PARTS <<< "$FULL_TAG"
     TAG=${TAG_PARTS[1]}
+    unset IFS
 fi
 set -e
 
