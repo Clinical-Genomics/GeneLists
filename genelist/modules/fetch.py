@@ -408,7 +408,7 @@ class Fetch(object):
                     yield self.merge_line(
                         {
                             'HGNC_symbol': hgnc_symbol,
-                            #'Ensembl_gene_id': self.mim2gene.get_ensembl(omim)
+                            'Ensembl_gene_id': self.mim2gene.get_ensembl(omim_morbid)
                         },
                         line,
                     )
@@ -423,7 +423,7 @@ class Fetch(object):
                     yield self.merge_line(
                         {
                             'OMIM_morbid': omim_morbid,
-                            #'Ensembl_gene_id': self.mim2gene.get_ensembl(hgnc)
+                            'Ensembl_gene_id': self.mim2gene.get_ensembl(hgnc_symbol)
                         },
                         line,
                     )
@@ -443,6 +443,14 @@ class Fetch(object):
         Yields:
             dict: with the Gene_start, Gene_stop, Chromosome and HGNC_symbol filled in.
 
+        TODO: change the order in which E! is queried when we would trust the E! gene ids:
+        - E! + OMIM
+        - E! + HGNC
+        - OMIM
+            - OMIM + HGNC on multiple
+        - HGNC
+        All queries include the chromosome
+
         """
         func_name = sys._getframe().f_code.co_name
         for line in data:
@@ -451,32 +459,40 @@ class Fetch(object):
             chromosome = there(line, 'Chromosome')
             ensembl_gene_id = there(line, 'Ensembl_gene_id')
 
-            # Skip to using the HGNC symbol when no OMIM morbid
             ensembl_lines = []
-            if omim_morbid:
-                ensembl_lines = self.ensembldb.query(omim_morbid=omim_morbid, chromosome=chromosome)
 
-            # multiple hits? WTF. Check with the hgnc symbol and omim morbid
-            if len(ensembl_lines) > 1:
-                ensembl_lines = self.ensembldb.query(hgnc_symbol=hgnc_symbol, omim_morbid=omim_morbid, chromosome=chromosome)
-                self.info('[{}] Found E! with {} {} {}'.format(func_name, omim_morbid, hgnc_symbol, chromosome))
+            if ensembl_gene_id and omim_morbid:
+                ensembl_lines = self.ensembldb.query(ensembl_gene_id=ensembl_gene_id, omim_morbid=omim_morbid, chromosome=chromosome)
+                if ensembl_lines:
+                    self.info('[{}] Found E! with {} {} {}'.format(func_name, ensembl_gene_id, omim_morbid, chromosome))
+
+            if not ensembl_lines:
+                if ensembl_gene_id and hgnc_symbol:
+                    ensembl_lines = self.ensembldb.query(ensembl_gene_id=ensembl_gene_id, hgnc_symbol=hgnc_symbol, chromosome=chromosome)
+                    if ensembl_lines:
+                        self.info('[{}] Found E! with {} {} {}'.format(func_name, ensembl_gene_id, hgnc_symbol, chromosome))
+
+            if not ensembl_lines and omim_morbid:
+                ensembl_lines = self.ensembldb.query(omim_morbid=omim_morbid, chromosome=chromosome)
+                if ensembl_lines:
+                    self.info('[{}] Found E! with {}'.format(func_name, omim_morbid, chromosome))
+
+                # multiple hits? WTF. Check with the hgnc symbol and omim morbid
+                if len(ensembl_lines) > 1 and hgnc_symbol:
+                    ensembl_lines = self.ensembldb.query(hgnc_symbol=hgnc_symbol, omim_morbid=omim_morbid, chromosome=chromosome)
+                    self.info('[{}] Found E! with {} {} {}'.format(func_name, omim_morbid, hgnc_symbol, chromosome))
 
             if not ensembl_lines and hgnc_symbol:
                 # then with the HGNC symbol only
                 ensembl_lines = self.ensembldb.query(hgnc_symbol=hgnc_symbol, chromosome=chromosome)
                 if ensembl_lines:
-                    self.info('[{}] Found E! with HGNC symbol instead of OMIM_morbid {}'.format(func_name, omim_morbid))
-
-            if not ensembl_lines:
-                ensembl_lines = self.ensembldb.query(ensembl_gene_id=ensembl_gene_id, chromosome=chromosome)
-                if ensembl_lines:
-                    self.info('[{}] Found E! with {} {}'.format(func_name, ensembl_gene_id, chromosome))
+                    self.info('[{}] Found E! with {}'.format(func_name, hgnc_symbol))
 
             if ensembl_lines:
                 if len(ensembl_lines) > 1:
                     e_ids = [entry['Ensembl_gene_id'] for entry in ensembl_lines]
-                    if ensembl_gene_id in e_ids:
-                        self.info('[{}] Multiple E! entries: {}.'.format(func_name, e_ids))
+                    #if ensembl_gene_id in e_ids:
+                    self.info('[{}] Multiple E! entries: {}.'.format(func_name, e_ids))
                 for ensembl_line in ensembl_lines:
                     yield self.merge_line(ensembl_line, line)
             else:
@@ -503,12 +519,12 @@ class Fetch(object):
             if omim_morbid and ensembl_gene_id:
                 transcripts = self.ensembldb.query_transcripts_omim(omim_morbid=omim_morbid, ensembl_gene_id=ensembl_gene_id)
                 if transcripts:
-                    self.info('[{}] Found transcripts with {} {}'.format(func_name, omim_morbid, ensembl_gene_id))
+                    self.info('[{}] Found E! transcripts with {} {}'.format(func_name, omim_morbid, ensembl_gene_id))
+
             if not transcripts and ensembl_gene_id:
                 transcripts = self.ensembldb.query_transcripts_omim(ensembl_gene_id=ensembl_gene_id)
-
                 if transcripts:
-                    self.info('[{}] Found E! transcripts with ensembl_gene_id instead of OMIM_morbid'.format(func_name, omim_morbid))
+                    self.info('[{}] Found E! transcripts with {}'.format(func_name, ensembl_gene_id))
 
             if transcripts:
                 line = self.merge_line(transcripts, line)
