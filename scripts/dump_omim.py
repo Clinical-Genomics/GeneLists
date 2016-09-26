@@ -4,7 +4,7 @@
 from __future__ import print_function
 import sys
 
-from .omim import OMIM
+from genelist.services.omim import OMIM
 
 def list2dict(header, data):
     """Will convert each row in the data from a list to dict using the header list as keys.
