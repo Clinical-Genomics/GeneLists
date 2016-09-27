@@ -801,14 +801,14 @@ class Fetch(object):
             header[0] = header[0].lstrip('#')
         dict_data = self.list2dict(header, parsable_data)
 
-        # get some context for error messages
-        context_data = self.get_context(dict_data)
-
         # clean up the input
-        clean_data = self.cleanup(context_data)
+        clean_data = self.cleanup(dict_data)
+
+        # get some context for error messages
+        context_data = self.get_context(clean_data)
 
         # remove none genes
-        reduced_data = self.remove_from_mim2gene(clean_data)
+        reduced_data = self.remove_from_mim2gene(context_data)
 
         # pick one HGNC symbol
         hgnc_data = self.pick_hgnc_symbol(reduced_data)
@@ -845,14 +845,14 @@ class Fetch(object):
         # at last, clean up the output
         cleaner_data = self.cleanup(aliased_data)
 
-        # prepend the HGNC symbol to some fields
-        prefixed_data = self.prepend_hgnc(cleaner_data)
-
         # print the warnings
-        warned_data = self.print_warnings_for_line(prefixed_data)
+        warned_data = self.print_warnings_for_line(cleaner_data)
+
+        # prepend the HGNC symbol to some fields
+        prefixed_data = self.prepend_hgnc(warned_data)
 
         # get all contigs
-        final_data = self.gather_contig(warned_data)
+        final_data = self.gather_contig(prefixed_data)
         print_data = []
         for line in final_data:
             print(self.format_line(line))
