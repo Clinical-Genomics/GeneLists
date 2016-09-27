@@ -5,10 +5,11 @@ from __future__ import print_function
 import sys
 import re
 import os
-import yaml
 import logging
 import copy
 from io import StringIO
+
+import yaml
 
 from ..services.omim import OMIM
 from ..services.ensembl import Ensembl
@@ -27,10 +28,10 @@ def there(line, key):
     """
 
     if key not in line:
-        return False
+        return ''
 
     if not line[key]:
-        return False
+        return ''
 
     return line[key]
 
@@ -40,15 +41,15 @@ class Fetch(object):
 
     def __init__(self, config, download_mim2gene):
         self.header = ['Chromosome', 'Gene_start', 'Gene_stop', 'HGNC_symbol', 'Protein_name',
-                          'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name',
-                          'Trivial_name_short',
-                          'Phenotypic_disease_model', 'OMIM_morbid', 'Gene_locus', 'UniProt_id',
-                          'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Reduced_penetrance',
-                          'Clinical_db_gene_annotation', 'Disease_associated_transcript',
-                          'Ensembl_transcript_to_refseq_transcript', 'Gene_description',
-                          'Genetic_disease_model', 'HGNC_RefSeq_NM', 'Uniprot_protein_name',
-                          'Database_entry_version', 'Curator', 'Alias', 'Group_or_Pathway',
-                          'Mosaicism', 'Comments']
+                       'Symptoms', 'Biochemistry', 'Imaging', 'Disease_trivial_name',
+                       'Trivial_name_short',
+                       'Phenotypic_disease_model', 'OMIM_morbid', 'Gene_locus', 'UniProt_id',
+                       'Ensembl_gene_id', 'Ensemble_transcript_ID', 'Reduced_penetrance',
+                       'Clinical_db_gene_annotation', 'Disease_associated_transcript',
+                       'Ensembl_transcript_to_refseq_transcript', 'Gene_description',
+                       'Genetic_disease_model', 'HGNC_RefSeq_NM', 'Uniprot_protein_name',
+                       'Database_entry_version', 'Curator', 'Alias', 'Group_or_Pathway',
+                       'Mosaicism', 'Comments']
 
         # columns that need a HGNC prefix
         self.prefix_header = ['Phenotypic_disease_model', 'OMIM_morbid', 'UniProt_id',
@@ -85,6 +86,7 @@ class Fetch(object):
         self.print_error = False
         self.report_empty = False
         self.remove_non_genes = False
+        self.leave_na = False
 
         # reset the StringIO
         self.log_buffer.truncate(0)
@@ -169,13 +171,13 @@ class Fetch(object):
                 pass
         """
         if self.print_warn:
+            key_in_current_line = key and key in self.current_line and self.current_line[key]
             if key is None: # no key is given, report all warnings
                 self.logger.warning(line, extra={'line_nr': self.line_nr,
-                                    'hgnc_id': self.current_hgnc_id})
-            elif self.report_empty or (key and
-                key in self.current_line and self.current_line[key]):
+                                                 'hgnc_id': self.current_hgnc_id})
+            elif self.report_empty or key_in_current_line:
                 self.logger.warning(line, extra={'line_nr': self.line_nr,
-                                    'hgnc_id': self.current_hgnc_id})
+                                                 'hgnc_id': self.current_hgnc_id})
 
     def info(self, line):
         """print only if the verbose switch has been set
@@ -202,7 +204,8 @@ class Fetch(object):
         """
         if self.print_error:
             line = '\033[31m [ERROR]\033[93m ' + line # add some color
-            self.logger.error(line, extra={'line_nr': self.line_nr, 'hgnc_id': self.current_hgnc_id})
+            self.logger.error(line, extra={'line_nr': self.line_nr,
+                                           'hgnc_id': self.current_hgnc_id})
 
     def get_context(self, data):
         """Increments the global line_nr for each passing line.
@@ -231,12 +234,22 @@ class Fetch(object):
             a line with the prefixed HGNC identifiers removed
         """
 
+        hgnc_symbol = there(line, 'HGNC_symbol')
         for column in self.header:
             if column in line:
-                line[column] = re.sub(r'^.*?:', '', str(line[column]))
+                if hgnc_symbol and str(line[column]).startswith(hgnc_symbol + ':'):
+                    line[column] = str(line[column])[len(hgnc_symbol + ':'):]
         return line
 
     def prepend_hgnc(self, data):
+        """ Prepends the HGNC symbol to columns defined in prefix_header
+
+        Args:
+            data (list of dicts): Inner dict represents a row in a gene list
+
+        Yields:
+            dict: with the prepended HGNC symbol
+        """
         for line in data:
             for column in self.prefix_header:
                 if column in line and line[column]:
@@ -261,6 +274,7 @@ class Fetch(object):
 
     def cleanup(self, data):
         """Will clean the data according to rules set by MIP
+                # cast to str
                 # replace white space seperated comma's with just a comma
                 # replace ; with comma
                 # remove leading and trailing white space
@@ -277,16 +291,18 @@ class Fetch(object):
         for line in data:
             for key, value in line.items():
                 if isinstance(value, str):
-                    if line[key] == '#NA':
-                        line[key] = ''
-                    if line[key] == 'NA':
-                        line[key] = ''
-                    else:
-                        line[key] = re.sub(r'\s*[,;]\s*', ',', value.strip()) # rm whitespace
-                        line[key] = re.sub(r',+', ',', line[key]) # collapse commas
-                        line[key] = line[key].rstrip(',') # rm trailing commas
+                    if not self.leave_na:
+                        if line[key] == '#NA':
+                            line[key] = ''
+                        if line[key] == 'NA':
+                            line[key] = ''
+                    line[key] = re.sub(r'\s*[,;]\s*', ',', value.strip()) # rm whitespace
+                    line[key] = re.sub(r',+', ',', line[key]) # collapse commas
+                    line[key] = line[key].rstrip(',') # rm trailing commas
                 elif value is False:
                     line[key] = ''
+                else:
+                    line[key] = str(line[key])
             line = self.remove_hgnc_prefix(line)
             yield line
 
@@ -334,9 +350,9 @@ class Fetch(object):
                         # don't report HGNC mismatches if multiple given
                         #if key == 'HGNC_symbol' and line[key] in client['HGNC_symbols']:
                         #    continue
-                            caller = sys._getframe(1).f_code.co_name
-                            self.warn("[{}] {}: line '{}' differs from client '{}'".\
-                                      format(caller, key, line[key], value), key)
+                        caller = sys._getframe(1).f_code.co_name
+                        self.warn("[{}] {}: line '{}' differs from client '{}'".\
+                                  format(caller, key, line[key], value), key)
 
         merged = client.copy()
         merged.update(line)
@@ -351,11 +367,14 @@ class Fetch(object):
             hgnc_symbols = hgnc_symbol.split(',')
             line['HGNC_symbols'] = hgnc_symbols # all symbols as a list
             line['HGNC_symbol'] = hgnc_symbols[0] # the proper HGNC smbol
-            line['HGNC_symbol_start'] = hgnc_symbols[0] # in case the above changes we still have the oriinal one
+            # in case the above changes we still have the oriinal one
+            line['HGNC_symbol_start'] = hgnc_symbols[0]
 
             yield line
 
     def init_mim2gene(self, download_mim2gene):
+        """ init the Mim2gene class.
+        """
         mim2gene_filename = os.path.join(os.path.dirname(__file__), 'mim2gene.txt')
         if download_mim2gene:
             self.info('Downloading {} ... '.format(mim2gene_filename))
@@ -682,10 +701,17 @@ class Fetch(object):
             yield d
 
     def print_warnings_for_line(self, data):
+        """ Print delayed warnings. Makes it easier to dismiss warnings where
+        a column changes value multiple times and ends up with the value it
+        started with.
+
+        Yields:
+            line (dict): Line is not altered.
+        """
         for line in data:
             if not self.print_info:
                 for key in sorted(self.original_line.keys()):
-                    if self.original_line[key] != line[key]:
+                    if str(self.original_line[key]) != str(line[key]):
                         self.warn("{}: line '{}' differs from client '{}'".\
                                   format(key, line[key], self.original_line[key]), key)
 
@@ -693,6 +719,8 @@ class Fetch(object):
             yield line
 
     def get_log_messages(self):
+        """ Gets the delayed log messages so one can print them to file.
+        """
         self.log_buffer_handler.flush()
         self.log_buffer.flush()
 
@@ -723,7 +751,7 @@ class Fetch(object):
 
         return root_logger
 
-    def annotate(self, lines, warn=False, error=False, info=False, report_empty=False, remove_non_genes=False):
+    def annotate(self, lines, leave_na=False, warn=False, error=False, info=False, report_empty=False, remove_non_genes=False):
         """ Annotate a gene list """
 
         self.reset()
@@ -743,6 +771,8 @@ class Fetch(object):
         if report_empty:
             self.report_empty = True
             verbose = True
+        if leave_na:
+            self.leave_na=leave_na
 
         if remove_non_genes:
             self.remove_non_genes = True
@@ -767,14 +797,14 @@ class Fetch(object):
             header[0] = header[0].lstrip('#')
         dict_data = self.list2dict(header, parsable_data)
 
-        # clean up the input
-        clean_data = self.cleanup(dict_data)
-
         # get some context for error messages
-        context_data = self.get_context(clean_data)
+        context_data = self.get_context(dict_data)
+
+        # clean up the input
+        clean_data = self.cleanup(context_data)
 
         # remove none genes
-        reduced_data = self.remove_from_mim2gene(context_data)
+        reduced_data = self.remove_from_mim2gene(clean_data)
 
         # pick one HGNC symbol
         hgnc_data = self.pick_hgnc_symbol(reduced_data)
@@ -811,14 +841,14 @@ class Fetch(object):
         # at last, clean up the output
         cleaner_data = self.cleanup(aliased_data)
 
-        # print the warnings
-        warned_data = self.print_warnings_for_line(cleaner_data)
-
         # prepend the HGNC symbol to some fields
-        prefixed_data = self.prepend_hgnc(warned_data)
+        prefixed_data = self.prepend_hgnc(cleaner_data)
+
+        # print the warnings
+        warned_data = self.print_warnings_for_line(prefixed_data)
 
         # get all contigs
-        final_data = self.gather_contig(prefixed_data)
+        final_data = self.gather_contig(warned_data)
         print_data = []
         for line in final_data:
             print(self.format_line(line))
