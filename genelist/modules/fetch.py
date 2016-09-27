@@ -405,7 +405,8 @@ class Fetch(object):
             if client_omim_morbid:
                 hgnc_symbol = self.mim2gene.get_hgnc(client_omim_morbid)
                 if not hgnc_symbol:
-                    self.error('[{}] HGNC_symbol NOT FOUND!'.format(func_name))
+                    if not client_hgnc_symbol:
+                        self.error('[{}] HGNC_symbol NOT FOUND!'.format(func_name))
                     yield line
                 else:
                     yield self.merge_line(
@@ -420,7 +421,8 @@ class Fetch(object):
             if client_hgnc_symbol:
                 omim_morbid = self.mim2gene.get_omim(client_hgnc_symbol)
                 if not omim_morbid:
-                    self.error('[{}] OMIM_morbid not found!'.format(func_name))
+                    if not client_omim_morbid:
+                        self.error('[{}] OMIM_morbid NOT FOUND!'.format(func_name))
                     yield line
                 else:
                     yield self.merge_line(
