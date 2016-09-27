@@ -396,14 +396,14 @@ class Fetch(object):
 
         """
         for line in data:
-            omim_morbid = there(line, 'OMIM_morbid')
-            hgnc_symbol = there(line, 'HGNC_symbol')
+            client_omim_morbid = there(line, 'OMIM_morbid')
+            client_hgnc_symbol = there(line, 'HGNC_symbol')
 
             #ensembl_gene_id = there(line, 'Ensembl_gene_id')
             func_name = sys._getframe().f_code.co_name
 
-            if omim_morbid:
-                hgnc_symbol = self.mim2gene.get_hgnc(omim_morbid)
+            if client_omim_morbid:
+                hgnc_symbol = self.mim2gene.get_hgnc(client_omim_morbid)
                 if not hgnc_symbol:
                     self.error('[{}] HGNC_symbol NOT FOUND!'.format(func_name))
                     yield line
@@ -411,14 +411,14 @@ class Fetch(object):
                     yield self.merge_line(
                         {
                             'HGNC_symbol': hgnc_symbol,
-                            'Ensembl_gene_id': self.mim2gene.get_ensembl(omim_morbid)
+                            'Ensembl_gene_id': self.mim2gene.get_ensembl(client_omim_morbid)
                         },
                         line,
                     )
                 continue
 
-            if hgnc_symbol:
-                omim_morbid = self.mim2gene.get_omim(hgnc_symbol)
+            if client_hgnc_symbol:
+                omim_morbid = self.mim2gene.get_omim(client_hgnc_symbol)
                 if not omim_morbid:
                     self.error('[{}] OMIM_morbid not found!'.format(func_name))
                     yield line
@@ -426,7 +426,7 @@ class Fetch(object):
                     yield self.merge_line(
                         {
                             'OMIM_morbid': omim_morbid,
-                            'Ensembl_gene_id': self.mim2gene.get_ensembl(hgnc_symbol)
+                            'Ensembl_gene_id': self.mim2gene.get_ensembl(client_hgnc_symbol)
                         },
                         line,
                     )
