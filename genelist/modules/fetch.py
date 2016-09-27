@@ -7,6 +7,7 @@ import re
 import os
 import yaml
 import logging
+import copy
 from io import StringIO
 
 from ..services.omim import OMIM
@@ -76,6 +77,7 @@ class Fetch(object):
         self.delimiter = '|' # join elements of a field
         self.current_hgnc_id = ''
         self.current_line = {}
+        self.original_line = {}
         self.line_nr = 0
         self.contigs = set()
         self.print_info = False
@@ -215,6 +217,7 @@ class Fetch(object):
             self.line_nr += 1
             self.current_hgnc_id = line['HGNC_symbol']
             self.current_line = line
+            self.original_line = copy.deepcopy(line)
 
             yield line
 
@@ -326,13 +329,14 @@ class Fetch(object):
                 # skip if no new value
                 continue
             else:
-                caller = sys._getframe(1).f_code.co_name
-                if str(line[key]) != str(value):
-                    # don't report HGNC mismatches if multiple given
-                    #if key == 'HGNC_symbol' and line[key] in client['HGNC_symbols']:
-                    #    continue
-                    self.warn("[{}] {}: line '{}' differs from client '{}'".\
-                              format(caller, key, line[key], value), key)
+                if self.print_info: # print all warnings immediatly
+                    if str(line[key]) != str(value): #  print all warnings immediatly
+                        # don't report HGNC mismatches if multiple given
+                        #if key == 'HGNC_symbol' and line[key] in client['HGNC_symbols']:
+                        #    continue
+                            caller = sys._getframe(1).f_code.co_name
+                            self.warn("[{}] {}: line '{}' differs from client '{}'".\
+                                      format(caller, key, line[key], value), key)
 
         merged = client.copy()
         merged.update(line)
@@ -350,7 +354,6 @@ class Fetch(object):
             line['HGNC_symbol_start'] = hgnc_symbols[0] # in case the above changes we still have the oriinal one
 
             yield line
-
 
     def init_mim2gene(self, download_mim2gene):
         mim2gene_filename = os.path.join(os.path.dirname(__file__), 'mim2gene.txt')
@@ -433,7 +436,15 @@ class Fetch(object):
             yield line
 
     def fill_from_ensembl(self, data):
-        """ Fill in Gene_start, Gene_stop, Chromosome and HGNC_symbol
+        """ Fill in Gene_start, Gene_stop, Chromosome, and possibly the E! gene id.
+
+        Change the order in which E! is queried when we would trust the E! gene ids:
+        - E! + OMIM
+        - E! + HGNC
+        - OMIM
+            - OMIM + HGNC on multiple hits
+        - HGNC
+        All queries include the chromosome.
 
         Method will warn when any value is overwritten.
 
@@ -442,14 +453,6 @@ class Fetch(object):
 
         Yields:
             dict: with the Gene_start, Gene_stop, Chromosome and HGNC_symbol filled in.
-
-        TODO: change the order in which E! is queried when we would trust the E! gene ids:
-        - E! + OMIM
-        - E! + HGNC
-        - OMIM
-            - OMIM + HGNC on multiple
-        - HGNC
-        All queries include the chromosome
 
         """
         func_name = sys._getframe().f_code.co_name
@@ -676,6 +679,17 @@ class Fetch(object):
             d.update(line)
             yield d
 
+    def print_warnings_for_line(self, data):
+        for line in data:
+            if not self.print_info:
+                for key in sorted(self.original_line.keys()):
+                    if self.original_line[key] != line[key]:
+                        self.warn("{}: line '{}' differs from client '{}'".\
+                                  format(key, line[key], self.original_line[key]), key)
+
+            self.updated_line = {}
+            yield line
+
     def get_log_messages(self):
         self.log_buffer_handler.flush()
         self.log_buffer.flush()
@@ -751,14 +765,14 @@ class Fetch(object):
             header[0] = header[0].lstrip('#')
         dict_data = self.list2dict(header, parsable_data)
 
-        # get some context for error messages
-        context_data = self.get_context(dict_data)
-
         # clean up the input
-        clean_data = self.cleanup(context_data)
+        clean_data = self.cleanup(dict_data)
+
+        # get some context for error messages
+        context_data = self.get_context(clean_data)
 
         # remove none genes
-        reduced_data = self.remove_from_mim2gene(clean_data)
+        reduced_data = self.remove_from_mim2gene(context_data)
 
         # pick one HGNC symbol
         hgnc_data = self.pick_hgnc_symbol(reduced_data)
@@ -795,8 +809,11 @@ class Fetch(object):
         # at last, clean up the output
         cleaner_data = self.cleanup(aliased_data)
 
+        # print the warnings
+        warned_data = self.print_warnings_for_line(cleaner_data)
+
         # prepend the HGNC symbol to some fields
-        prefixed_data = self.prepend_hgnc(cleaner_data)
+        prefixed_data = self.prepend_hgnc(warned_data)
 
         # get all contigs
         final_data = self.gather_contig(prefixed_data)
