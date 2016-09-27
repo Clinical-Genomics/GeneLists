@@ -94,7 +94,7 @@ def merge_panels(infiles, databases):
         for database, version_date in database_version.items():
             print('##Database=<ID=%s,Version=%s,Date=%s,Acronym=%s,Complete_name=%s,Clinical_db_genome_build=GRCh37.p13' % (os.path.basename(filename), version_date['Version'], version_date['Date'], database, version_date['Fullname']))
 
-    print('\t'.join(columns))
+    print('#' + '\t'.join(columns))
     for line in data.values():
         if len(databases) > 2:
             line['Clinical_db_gene_annotation'].append('FullList')
