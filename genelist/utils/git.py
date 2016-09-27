@@ -47,7 +47,7 @@ def getgitlastmoddate(filename, date_format='%Y%m%d'):
     """
     cwd = os.getcwd()
     os.chdir(os.path.dirname(os.path.abspath(filename)))
-    full_str_date = subprocess.check_output(['git', 'log', '-1', '--format=%ad', '--', filename]).decode('utf-8').strip()
+    full_str_date = subprocess.check_output(['git', 'log', '-1', '--format=%cd', '--', filename]).decode('utf-8').strip()
     os.chdir(cwd)
 
     if not full_str_date:
