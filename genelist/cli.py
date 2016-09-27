@@ -12,7 +12,7 @@ from .modules.merge import merge_panels
 
 #logger = logging.getLogger(__name__)
 
-__version__ = '3.5.1'
+__version__ = '3.6.0'
 
 @click.group()
 def run():
