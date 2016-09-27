@@ -12,7 +12,7 @@ from .modules.merge import merge_panels
 
 #logger = logging.getLogger(__name__)
 
-__version__ = '3.6.3'
+__version__ = '3.7.0'
 
 @click.group()
 def run():
@@ -30,18 +30,20 @@ def run():
               help='Print severe conflicts.')
 @click.option('--info', is_flag=True, default=False, show_default=True,
               help='Be more verbose.')
+@click.option('--leave-na', is_flag=True, default=False, show_default=True,
+              help='Do not remove the NA in manually annotated columns.')
 @click.option('--report-empty', is_flag=True, default=False, show_default=True,
               help='Report warnings from empty fields.')
 @click.option('--download-mim2gene', is_flag=True, default=False, show_default=True,
               help='Will download a new version of mim2gene.txt, used to check the OMIM type.')
 @click.option('--config', '-c', required=True, type=click.File('r'),
               help='YAML config file.')
-def fetch(infile, outfile, remove_non_genes, warn, error, info, download_mim2gene, report_empty, config):
+def fetch(infile, outfile, leave_na, remove_non_genes, warn, error, info, download_mim2gene, report_empty, config):
     """Fetch all annotations."""
 
     fetch = Fetch(config, download_mim2gene=download_mim2gene)
 
-    for line in fetch.annotate(lines=infile, remove_non_genes=remove_non_genes, info=info, error=error, warn=warn, report_empty=report_empty):
+    for line in fetch.annotate(lines=infile, leave_na=leave_na, remove_non_genes=remove_non_genes, info=info, error=error, warn=warn, report_empty=report_empty):
         outfile.write(line + '\n')
 
 @run.command()
