@@ -69,7 +69,7 @@ class Ensembl:
         else:
             return rs
 
-    def query_transcripts_omim(self, omim_morbid=None, ensembl_gene_id=None):
+    def query_transcripts(self, omim_morbid=None, ensembl_gene_id=None):
         """Queries EnsEMBL for all transcripts.
 
         Args

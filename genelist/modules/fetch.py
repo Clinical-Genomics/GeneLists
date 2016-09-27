@@ -539,16 +539,19 @@ class Fetch(object):
             omim_morbid = there(line, 'OMIM_morbid')
             ensembl_gene_id = there(line, 'Ensembl_gene_id')
 
-            transcripts = []
+            transcripts = {}
             if omim_morbid and ensembl_gene_id:
-                transcripts = self.ensembldb.query_transcripts_omim(omim_morbid=omim_morbid, ensembl_gene_id=ensembl_gene_id)
+                transcripts = self.ensembldb.query_transcripts(omim_morbid=omim_morbid,
+                                                               ensembl_gene_id=ensembl_gene_id)
                 if transcripts:
-                    self.info('[{}] Found E! transcripts with {} {}'.format(func_name, omim_morbid, ensembl_gene_id))
+                    self.info('[{}] Found E! transcripts with {} {}'.\
+                              format(func_name, omim_morbid, ensembl_gene_id))
 
             if not transcripts and ensembl_gene_id:
-                transcripts = self.ensembldb.query_transcripts_omim(ensembl_gene_id=ensembl_gene_id)
+                transcripts = self.ensembldb.query_transcripts(ensembl_gene_id=ensembl_gene_id)
                 if transcripts:
-                    self.info('[{}] Found E! transcripts with {}'.format(func_name, ensembl_gene_id))
+                    self.info('[{}] Found E! transcripts with {}'.\
+                              format(func_name, ensembl_gene_id))
 
             if transcripts:
                 line = self.merge_line(transcripts, line)
@@ -751,7 +754,8 @@ class Fetch(object):
 
         return root_logger
 
-    def annotate(self, lines, leave_na=False, warn=False, error=False, info=False, report_empty=False, remove_non_genes=False):
+    def annotate(self, lines, leave_na=False, warn=False, error=False, info=False,
+                 report_empty=False, remove_non_genes=False):
         """ Annotate a gene list """
 
         self.reset()
@@ -772,7 +776,7 @@ class Fetch(object):
             self.report_empty = True
             verbose = True
         if leave_na:
-            self.leave_na=leave_na
+            self.leave_na = leave_na
 
         if remove_non_genes:
             self.remove_non_genes = True

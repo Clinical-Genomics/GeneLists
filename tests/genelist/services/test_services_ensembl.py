@@ -34,7 +34,7 @@ def test_query_transcripts(config_stream):
     ensembl = init(config_stream)
 
     # TRMT10A: should return 7 transcripts!
-    assert ensembl.query_transcripts_omim(ensembl_gene_id='ENSG00000145331') == {
+    assert ensembl.query_transcripts(ensembl_gene_id='ENSG00000145331') == {
         'Chromosome': '4',
         'Ensembl_gene_id': 'ENSG00000145331',
         'Ensembl_transcript_to_refseq_transcript': 'ENST00000273962>NM_152292/XM_005263352|ENST00000394876|ENST00000394877>NM_001134665/NM_001134666|ENST00000455368|ENST00000507394|ENST00000514547|ENST00000515831',
@@ -44,8 +44,8 @@ def test_query_transcripts(config_stream):
     }
     
     # ZSWIM6: found with E! gene id not OMIM
-    assert ensembl.query_transcripts_omim(omim_morbid='615951') == {}
-    assert ensembl.query_transcripts_omim(ensembl_gene_id='ENSG00000130449') == {
+    assert ensembl.query_transcripts(omim_morbid='615951') == {}
+    assert ensembl.query_transcripts(ensembl_gene_id='ENSG00000130449') == {
         'Chromosome': '5',
         'Ensembl_gene_id': 'ENSG00000130449',
         'Ensembl_transcript_to_refseq_transcript': 'ENST00000252744>NM_020928',
@@ -55,7 +55,7 @@ def test_query_transcripts(config_stream):
     }
 
     # BMPR1B: found with OMIM and E! gene id
-    assert ensembl.query_transcripts_omim(omim_morbid='603248', ensembl_gene_id='ENSG00000138696') == {
+    assert ensembl.query_transcripts(omim_morbid='603248', ensembl_gene_id='ENSG00000138696') == {
         'Chromosome': '4',
         'Ensembl_gene_id': 'ENSG00000138696',
         'Ensembl_transcript_to_refseq_transcript': 'ENST00000264568>NM_001256794|ENST00000394931|ENST00000440890|ENST00000502683|ENST00000506363|ENST00000509540>NM_001256793|ENST00000512312>NM_001256792|ENST00000515059>NM_001203/XM_005263180/XM_005263181',
@@ -63,5 +63,3 @@ def test_query_transcripts(config_stream):
         'Gene_start': 95679119,
         'Gene_stop': 96079599
     }
-
-
