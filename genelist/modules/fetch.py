@@ -344,6 +344,8 @@ class Fetch(object):
                 continue
             elif not has_new_value:
                 # skip if no new value
+                if key in line:
+                    del line[key]
                 continue
             else:
                 if self.print_info: # print all warnings immediatly
