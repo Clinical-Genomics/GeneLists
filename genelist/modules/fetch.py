@@ -71,6 +71,7 @@ class Fetch(object):
             user=self.config['ensembl']['user'],
             db=self.config['ensembl']['db']
         )
+        self.genenames = Genenames()
 
     def reset(self):
         """ Reset state for a next genelist to annotate """
@@ -424,8 +425,6 @@ class Fetch(object):
             if client_omim_morbid:
                 hgnc_symbol = self.mim2gene.get_hgnc(client_omim_morbid)
                 if not hgnc_symbol:
-                    if not client_hgnc_symbol:
-                        self.error('[{}] HGNC_symbol NOT FOUND!'.format(func_name))
                     yield line
                 else:
                     yield self.merge_line(
@@ -440,8 +439,6 @@ class Fetch(object):
             if client_hgnc_symbol:
                 omim_morbid = self.mim2gene.get_omim(client_hgnc_symbol)
                 if not omim_morbid:
-                    if not client_omim_morbid:
-                        self.error('[{}] OMIM_morbid NOT FOUND!'.format(func_name))
                     yield line
                 else:
                     yield self.merge_line(
@@ -454,6 +451,36 @@ class Fetch(object):
                 continue
 
             # let's skip EnsEMBL checking for now
+            yield line
+
+    def fill_from_genenames(self, data):
+        """
+        """
+        for line in data:
+            hgnc_symbol = there(line, 'HGNC_symbol')
+
+            if hgnc_symbol:
+                omim_morbids = self.genenames.omim(hgnc_symbol)
+
+                if omim_morbids:
+                    if len(omim_morbids) > 1:
+                        self.warn('Multiple OMIM morbid ids {}'.format(omim_morbids))
+
+                    yield self.merge_line({'OMIM_morbid': omim_morbids[0]}, line)
+                    continue
+
+            yield line
+
+    def check_identifiers(self, data):
+        """
+        """
+        for line in data:
+            identifiers = ('OMIM_morbid', 'Ensembl_gene_id', 'HGNC_symbol')
+
+            for identifier in identifiers:
+                if not there(line, identifier):
+                    self.error('{} NOT FOUND!'.format(identifier))
+
             yield line
 
     def fill_from_ensembl(self, data):
@@ -520,7 +547,7 @@ class Fetch(object):
                 for ensembl_line in ensembl_lines:
                     yield self.merge_line(ensembl_line, line)
             else:
-                self.error('[{}] {}: No E! entries!'.format(func_name, omim_morbid))
+                self.warn('[{}] {}: No E! entries!'.format(func_name, omim_morbid))
                 yield line
 
     def query_transcripts(self, data):
@@ -569,10 +596,9 @@ class Fetch(object):
         Yields:
                 dict: now with the UniProt information.
         """
-        genenames = Genenames()
         uniprot = Uniprot()
         for line in data:
-            uniprot_ids = genenames.uniprot(line['HGNC_symbol'])
+            uniprot_ids = self.genenames.uniprot(line['HGNC_symbol'])
             uniprot_ids = uniprot_ids if uniprot_ids != None else ''
             uniprot_ids_joined = self.delimiter.join(uniprot_ids)
             uniprot_description = ''
@@ -598,9 +624,8 @@ class Fetch(object):
         Yields:
                 dict: now with the RefSeq information.
         """
-        genenames = Genenames()
         for line in data:
-            refseq = genenames.refseq(line['HGNC_symbol'])
+            refseq = self.genenames.refseq(line['HGNC_symbol'])
             refseq = self.delimiter.join(refseq) if refseq != None else ''
             yield self.merge_line({'HGNC_RefSeq_NM': refseq}, line)
 
@@ -818,14 +843,20 @@ class Fetch(object):
         # all from mim2gene, the magical file
         mim2gene_data = self.fill_from_mim2gene(hgnc_data)
 
+        # fill from genenames.org
+        genenames_data = self.fill_from_genenames(mim2gene_data)
+
         # fill in the inheritance models, chromosome
-        omim_data = self.query_omim(mim2gene_data)
+        omim_data = self.query_omim(genenames_data)
 
         # fill in info from ensembl
         ensembl_data = self.fill_from_ensembl(omim_data)
 
+        # check identifiers
+        identifiers_data = self.check_identifiers(ensembl_data)
+
         # aggregate transcripts
-        transcript_data = self.query_transcripts(ensembl_data)
+        transcript_data = self.query_transcripts(identifiers_data)
 
         ## add uniprot
         uniprot_data = self.add_uniprot(transcript_data)

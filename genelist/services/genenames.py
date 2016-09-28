@@ -58,6 +58,17 @@ class Genenames(object):
 
         return info
 
+    def omim(self, hgnc_symbol):
+        """Fetches the OMIM morbid id.
+
+        Args:
+            hgnc_symbol (str): an HGNC symbol.
+
+        Returns (list): OMIM morbid.
+
+        """
+        return self.fetch_symbol(hgnc_symbol, 'omim_id')
+
     def aliases(self, hgnc_symbol):
         """Fetches the HGNC aliases
 
