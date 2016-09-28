@@ -292,14 +292,12 @@ class Fetch(object):
         for line in data:
             for key, value in line.items():
                 if isinstance(value, str):
-                    if not self.leave_na:
-                        if line[key] == '#NA':
-                            line[key] = ''
-                        if line[key] == 'NA':
-                            line[key] = ''
                     line[key] = re.sub(r'\s*[,;]\s*', ',', value.strip()) # rm whitespace
                     line[key] = re.sub(r',+', ',', line[key]) # collapse commas
                     line[key] = line[key].rstrip(',') # rm trailing commas
+                    if not self.leave_na:
+                        if line[key] in ('#NA', 'NA', '#N/A'):
+                            line[key] = ''
                 elif value is False:
                     line[key] = ''
                 else:
