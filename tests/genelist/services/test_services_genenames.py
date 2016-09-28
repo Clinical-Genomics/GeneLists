@@ -19,3 +19,7 @@ def test_official():
     assert genenames.official('ALG9') == 'ALG9'
     assert genenames.official('DIBD1') == 'ALG9' # test previous symbol
 
+def test_omim():
+    assert genenames.omim('SLC2A1') == [138140, 143090]
+    assert genenames.omim('APOA1BP') == None # NAXE alias
+    assert genenames.omim('NAXE') == [608862]
