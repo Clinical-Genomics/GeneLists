@@ -641,9 +641,9 @@ class Fetch(object):
         omim = OMIM(api_key=self.config['OMIM']['api_key'])
         for line in data:
             omim_morbid = there(line, 'OMIM_morbid')
-            if omim_morbid and 'Chromosome' in line:
+            if omim_morbid:
                 entry = omim.gene(mim_number=omim_morbid)
-            elif 'HGNC_symbol' in line and 'Chromosome' in line:
+            elif 'HGNC_symbol' in line:
                 entry = omim.gene(hgnc_symbol=line['HGNC_symbol'])
             else:
                 func_name = sys._getframe().f_code.co_name
@@ -651,8 +651,9 @@ class Fetch(object):
                 yield line
                 continue
 
+            chromosome = there(line, 'Chromosome')
             phenotypic_disease_models = omim.\
-                parse_phenotypic_disease_models(entry['phenotypes'], line['Chromosome'])
+                parse_phenotypic_disease_models(entry['phenotypes'], chromosome)
 
             # extract the inheritance model
             line_phenotypic_disease_models = []

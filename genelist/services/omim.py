@@ -63,7 +63,7 @@ class OMIM(object):
 
   def __init__(self, api_key, response_format='json'):
     super(OMIM, self).__init__()
-    self.base_url = 'http://api.europe.omim.org/api'
+    self.base_url = 'http://api.omim.org/api'
     self.format = response_format
     self.api_key = api_key
 
@@ -256,16 +256,14 @@ class OMIM(object):
     retry = True # Execute the first
     while retry or res.status_code == requests.codes.conflict:
         try:
-            retry = False
-            res = requests.get(url, params=params)
-            if not res.from_cache:
-                time.sleep(0.25) # wait for 250ms as according to OMIM specs
-        except Exception:
+          retry = False
+          res = requests.get(url, params=params)
+          if not res.from_cache:
+              time.sleep(0.25) # wait for 250ms as according to OMIM specs
+        except TypeError:
             retry = True
-        #except TypeError:
-        #    retry = True
-        #except ProtocolError:
-        #    retry = True
+        except ProtocolError:
+            retry = True
 
         # when we get trottled, give it a sec
         if sleep > 1000: # if sleeping for 15mins, reset
