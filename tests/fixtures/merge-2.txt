@@ -1,0 +1,29 @@
+##Database=<ID=cust002-OMIM.txt,Version=63.0,Date=20161026,Acronym=OMIM,Complete_name=OMIM of 2016-10-25,Clinical_db_genome_build=GRCh37.p13
+##contig=<ID=1
+##contig=<ID=2
+##contig=<ID=3
+##contig=<ID=4
+##contig=<ID=5
+##contig=<ID=6
+##contig=<ID=7
+##contig=<ID=8
+##contig=<ID=9
+##contig=<ID=10
+##contig=<ID=11
+##contig=<ID=12
+##contig=<ID=13
+##contig=<ID=14
+##contig=<ID=15
+##contig=<ID=16
+##contig=<ID=17
+##contig=<ID=18
+##contig=<ID=19
+##contig=<ID=20
+##contig=<ID=21
+##contig=<ID=22
+##contig=<ID=X
+##contig=<ID=Y
+#Chromosome	Gene_start	Gene_stop	HGNC_symbol	Protein_name	Symptoms	Biochemistry	Imaging	Disease_trivial_name	Trivial_name_short	Phenotypic_disease_model	OMIM_morbid	Gene_locus	UniProt_id	Ensembl_gene_id	Ensemble_transcript_ID	Reduced_penetrance	Clinical_db_gene_annotation	Disease_associated_transcript	Ensembl_transcript_to_refseq_transcript	Gene_description	Genetic_disease_model	HGNC_RefSeq_NM	Uniprot_protein_name	Database_entry_version	Curator	Alias	Group_or_Pathway	Mosaicism	Comments
+7	121715701	121784334	AASS					Hyperlysinemia,238700 (3)		AASS:268700>AR|238700>AR	AASS:605113	7q31.32	AASS:Q9UDR5	ENSG00000008311			OMIM		AASS:ENST00000358954|ENST00000393376|ENST00000417368>NM_005763|ENST00000426162|ENST00000431170|ENST00000460376|ENST00000473553	AASS:aminoadipate-semialdehyde_synthase		AASS:NM_005763	AASS:Alpha-aminoadipic_semialdehyde_synthase__mitochondrial						
+16	70286198	70323446	AARS					Charcot-Marie-Tooth disease,axonal,type 2N,613287 (3)		AARS:616339>AR|613287>AD	AARS:601065	16q22.1	AARS:P49588	ENSG00000090861			OMIM		AARS:ENST00000261772>NM_001605/XM_005255813|ENST00000564359|ENST00000565361|ENST00000566969|ENST00000567490|ENST00000569790|ENST00000569825	AARS:alanyl-tRNA_synthetase		AARS:NM_001605	AARS:Alanine--tRNA_ligase__cytoplasmic						
+X	152990323	153010216	ABCD1					Adrenoleukodystrophy,300100 (3)		ABCD1:300100>XR	ABCD1:300371	Xq28	ABCD1:P33897	ENSG00000101986			OMIM		ABCD1:ENST00000218104>NM_000033|ENST00000370129|ENST00000443684	ABCD1:ATP-binding_cassette__sub-family_D_(ALD)__member_1		ABCD1:NM_000033	ABCD1:ATP-binding_cassette_sub-family_D_member_1						

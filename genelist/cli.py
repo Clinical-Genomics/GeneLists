@@ -94,7 +94,8 @@ def merge(infiles, database):
     Args:
         infiles: paths to gene lists.
     """
-    merge_panels(infiles, database)
+    for line in merge_panels(infiles, database):
+        print(line)
 
 def setup_logging(level='INFO'):
     """Setup the loggin for this package

@@ -1,0 +1,5 @@
+##Database=<ID=id-test.txt,Version=1.0,Date=20161028,Acronym=ID,Complete_name=Intellectual disability,Clinical_db_genome_build=GRCh37.p13
+#Chromosome	HGNC_symbol	Ensembl_gene_id	Clinical_db_gene_annotation	Reduced_penetrance	Disease_associated_transcript	Phenotypic_disease_model	Genetic_disease_model	OMIM_morbid	Database_entry_version	Curator	Alias	Group_or_Pathway	Mosaicism	Comments
+16	AARS	ENSG00000090861	ID,OMIM			616339>AR|613287>AD		601065						
+7	AASS	ENSG00000008311	ID,OMIM			268700>AR|238700>AR		605113						
+X	ABCD1	ENSG00000101986	ID,OMIM			300100>XR		300371						

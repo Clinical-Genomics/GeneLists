@@ -69,8 +69,9 @@ def merge_panels(infiles, databases):
             # fill
             for column in columns:
                 if column in list_columns:
-                    data[hgnc_id][column].append(line[column])
-                data[hgnc_id][column] = line[column]
+                    data[hgnc_id][column].extend(line[column])
+                else:
+                    data[hgnc_id][column] = line[column]
 
             # fill versions dict
             for database in line['Clinical_db_gene_annotation']:
@@ -89,20 +90,19 @@ def merge_panels(infiles, databases):
                     full_name = acronyms[database]
                     versions[infile.name][database] = {'Version': version, 'Date': mod_date,
                                                        'Fullname': full_name}
-
     for filename, database_version in versions.items():
         for database, version_date in database_version.items():
-            print('##Database=<ID=%s,Version=%s,Date=%s,Acronym=%s,Complete_name=%s,Clinical_db_genome_build=GRCh37.p13' % (os.path.basename(filename), version_date['Version'], version_date['Date'], database, version_date['Fullname']))
+            yield '##Database=<ID=%s,Version=%s,Date=%s,Acronym=%s,Complete_name=%s,Clinical_db_genome_build=GRCh37.p13' % (os.path.basename(filename), version_date['Version'], version_date['Date'], database, version_date['Fullname'])
 
-    print('#' + '\t'.join(columns))
+    yield '#' + '\t'.join(columns)
     for line in data.values():
         if len(databases) > 2:
             line['Clinical_db_gene_annotation'].append('FullList')
 
         for column in list_columns:
-            line[column] = ','.join(list(set(line[column])))
+            line[column] = ','.join(sorted(list(set(line[column]))))
 
         if line['Disease_associated_transcript'] == 'unknown':
             line['Disease_associated_transcript'] = ''
         for ensemblid in line['Ensembl_gene_id'].split(','):
-            print('\t'.join([line[column] for column in columns]))
+            yield '\t'.join([line[column] for column in columns])
