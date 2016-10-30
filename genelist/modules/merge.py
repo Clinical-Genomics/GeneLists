@@ -105,4 +105,5 @@ def merge_panels(infiles, databases):
         if line['Disease_associated_transcript'] == 'unknown':
             line['Disease_associated_transcript'] = ''
         for ensemblid in line['Ensembl_gene_id'].split(','):
+            line['Ensembl_gene_id'] = ensemblid
             yield '\t'.join([line[column] for column in columns])
