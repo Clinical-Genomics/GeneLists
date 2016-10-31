@@ -11,6 +11,7 @@ from io import StringIO
 
 import yaml
 
+from genelist import api
 from ..services.omim import OMIM
 from ..services.ensembl import Ensembl
 from ..services.genenames import Genenames
@@ -304,19 +305,6 @@ class Fetch(object):
                     line[key] = str(line[key])
             line = self.remove_hgnc_prefix(line)
             yield line
-
-    def list2dict(self, header, data):
-        """Will convert each row in the data from a list to dict using the header list as keys.
-
-        Args:
-                header (list): A list containing the keys for the dict generation
-                data (list of lists): Inner list represents a row in a gene list
-
-        Yields:
-                dict: the next dictified line
-        """
-        for line in data:
-            yield dict(zip(header, line))
 
     def merge_line(self, line, client):
         """Will merge line with client.
@@ -807,25 +795,9 @@ class Fetch(object):
         if remove_non_genes:
             self.remove_non_genes = True
 
-        # slurp and make a line
-        raw_data = (line.strip() for line in lines) # sluuuurp
-        parsable_data = (line.split("\t") for line in raw_data)
-
-        # skip parsing of leading comments
-        comments = []
-        line = next(parsable_data)
-        self.line_nr += 1
-        while line[0].startswith('##'):
-            if not line[0].startswith('##contig'):
-                comments.append(line) # skip all contig comments
-            self.line_nr += 1
-            line = next(parsable_data)
-
-        # list to dict
-        header = line # get the header
-        if header[0].startswith('#'):
-            header[0] = header[0].lstrip('#')
-        dict_data = self.list2dict(header, parsable_data)
+        comments, dict_data = api.readlist(lines)
+        # + 1 for the header line
+        self.line_nr = len(comments) + 1 
 
         # clean up the input
         clean_data = self.cleanup(dict_data)
