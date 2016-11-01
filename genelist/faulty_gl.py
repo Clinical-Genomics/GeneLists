@@ -8,6 +8,15 @@ import yaml
 from genelist import api
 from genelist.utils import git
 
+def get_customer_name(target_list):
+    """ """
+
+    list_name = os.path.basename(target_list)
+    customer_name = list_name.split('-')[0]
+
+    return customer_name
+
+
 def get_display_name(target_list, target_panel):
     """ """
 
@@ -40,6 +49,7 @@ def main(cml, target_list, target_panel):
             'display': get_display_name(target_list, target_panel),
             'version': git.getgittag(target_list),
             'date': git.getgitlastmoddate(target_list),
+            'customer': get_customer_name(target_list),
             'genes': list(missing_hgnc_symbols)
         }
     }
