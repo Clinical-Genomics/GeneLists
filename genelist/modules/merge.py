@@ -100,7 +100,9 @@ def merge_panels(infiles, databases):
             line['Clinical_db_gene_annotation'].append('FullList')
 
         for column in list_columns:
-            line[column] = ','.join(sorted(list(set(line[column]))))
+            list_values = sorted(list(set(line[column]))) # uniq sorted list
+            list_values = filter(None, list_values) # remove empty strings
+            line[column] = ','.join(list_values)
 
         if line['Disease_associated_transcript'] == 'unknown':
             line['Disease_associated_transcript'] = ''
