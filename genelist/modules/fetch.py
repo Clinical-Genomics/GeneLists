@@ -531,7 +531,7 @@ class Fetch(object):
                 if len(ensembl_lines) > 1:
                     e_ids = [entry['Ensembl_gene_id'] for entry in ensembl_lines]
                     #if ensembl_gene_id in e_ids:
-                    self.info('[{}] Multiple E! entries: {}.'.format(func_name, e_ids))
+                    self.warn('[{}] Multiple E! entries: {}.'.format(func_name, e_ids))
                 for ensembl_line in ensembl_lines:
                     yield self.merge_line(ensembl_line, line)
             else:

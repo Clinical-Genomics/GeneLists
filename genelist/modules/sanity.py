@@ -188,16 +188,14 @@ class Sanity(object):
         for line in lines:
             for field_key in fields.keys():
                 if line[field_key] in fields[field_key]:
-                    if (fields[field_key][line[field_key]] + 1) != self.line_nr:
-                        self.warn("'{}' already listed at #{}".\
-                                  format(line[field_key], fields[field_key][line[field_key]]))
+                    self.warn("'{}' already listed at #{}".\
+                              format(line[field_key], fields[field_key][line[field_key]]))
                 fields[field_key][line[field_key]] = self.line_nr
 
             if line['Gene_start'] in Gene_start and line['Gene_stop'] in Gene_stop:
-                if (Gene_start[line['Gene_start']] + 1) != self.line_nr:
-                    self.warn("'{}-{}' already listed at #{}".\
-                              format(line['Gene_start'], line['Gene_stop'],
-                                     Gene_start[line['Gene_start']]))
+                self.warn("'{}-{}' already listed at #{}".\
+                          format(line['Gene_start'], line['Gene_stop'],
+                                 Gene_start[line['Gene_start']]))
             Gene_start[line['Gene_start']] = self.line_nr
             Gene_stop[line['Gene_stop']]   = self.line_nr
 
